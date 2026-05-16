@@ -1,5 +1,10 @@
-import { Lightbulb } from "lucide-react";
+"use client";
 
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Card,
   CardContent,
@@ -7,26 +12,35 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useSettingsStore } from "@/lib/stores/settings-store";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
 
 export function StockAiInsight({ analysis }: { analysis: StockAnalysis }) {
+  const show = useSettingsStore((s) => s.displayAiInsights);
+  if (!show) return null;
+
   const { aiInsight } = analysis;
+
   return (
-    <Card className="border-2 border-primary/20">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Lightbulb className="h-5 w-5 text-primary" />
-          <CardTitle>AI Insight</CardTitle>
-        </div>
-        <CardDescription>
-          Plain-language interpretation of the forecast
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        <p>{aiInsight.summary}</p>
-        <p className="text-muted-foreground">{aiInsight.caution}</p>
-        <p className="text-muted-foreground">{aiInsight.context}</p>
-      </CardContent>
-    </Card>
+    <Collapsible defaultOpen>
+      <Card>
+        <CardHeader>
+          <CollapsibleTrigger className="flex w-full items-center justify-between text-left">
+            <div>
+              <CardTitle>AI Market Insight</CardTitle>
+              <CardDescription>Plain-language forecast interpretation</CardDescription>
+            </div>
+            <span className="text-sm text-muted-foreground">Toggle</span>
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-4 text-sm leading-relaxed text-muted-foreground">
+            <p>{aiInsight.summary}</p>
+            <p>{aiInsight.caution}</p>
+            <p>{aiInsight.context}</p>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

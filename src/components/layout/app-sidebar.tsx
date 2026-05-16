@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  LineChart,
   ListChecks,
   Settings,
   TrendingUp,
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/stocks", label: "Stocks", icon: LineChart },
   { href: "/watchlist", label: "Watchlist", icon: ListChecks },
   { href: "/forecasts", label: "Forecasts", icon: TrendingUp },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -24,7 +26,7 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r bg-card md:flex md:flex-col">
+    <aside className="hidden w-64 shrink-0 flex-col border-r bg-card md:flex">
       <div className="flex h-16 items-center border-b px-6">
         <Link href="/" className="flex items-center gap-2">
           <TrendingUp className="h-6 w-6 text-primary" />
@@ -52,6 +54,12 @@ export function AppSidebar() {
           );
         })}
       </nav>
+      <div className="mt-auto border-t p-4 text-xs text-muted-foreground">
+        <p className="mb-2">Educational research tool — not financial advice.</p>
+        <Link href="/terms" className="text-primary hover:underline">
+          Terms & disclaimer
+        </Link>
+      </div>
     </aside>
   );
 }

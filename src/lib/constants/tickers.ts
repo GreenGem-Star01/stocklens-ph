@@ -1,3 +1,8 @@
+import {
+  ALL_STOCK_SEEDS,
+  BLUE_CHIP_SEEDS,
+} from "@/lib/data/stock-seeds";
+
 export type TickerEntry = {
   ticker: string;
   path: string;
@@ -5,14 +10,24 @@ export type TickerEntry = {
   sector: string;
 };
 
-export const SUPPORTED_TICKERS: TickerEntry[] = [
-  { ticker: "BDO.PS", path: "bdo", name: "BDO Unibank", sector: "Financials" },
-  { ticker: "JFC.PS", path: "jfc", name: "Jollibee Foods", sector: "Consumer" },
-  { ticker: "ALI.PS", path: "ali", name: "Ayala Land", sector: "Real Estate" },
-  { ticker: "TEL.PS", path: "tel", name: "PLDT Inc.", sector: "Telecom" },
-  { ticker: "SMPH.PS", path: "smph", name: "SM Prime", sector: "Real Estate" },
-  { ticker: "PSEI.PS", path: "psei", name: "PSEi Index", sector: "Index" },
-];
+export const SUPPORTED_TICKERS: TickerEntry[] = ALL_STOCK_SEEDS.map(
+  (seed) => ({
+    ticker: seed.ticker,
+    path: seed.path,
+    name: seed.shortName,
+    sector: seed.sector,
+  }),
+);
+
+/** Equity blue chips only (excludes PSEI index). */
+export const BLUE_CHIP_TICKERS: TickerEntry[] = BLUE_CHIP_SEEDS.map(
+  (seed) => ({
+    ticker: seed.ticker,
+    path: seed.path,
+    name: seed.shortName,
+    sector: seed.sector,
+  }),
+);
 
 export const TICKER_PATHS = new Set(SUPPORTED_TICKERS.map((t) => t.path));
 

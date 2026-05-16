@@ -4,13 +4,14 @@ import { MarketOverview } from "@/components/dashboard/market-overview";
 import { PseiChart } from "@/components/dashboard/psei-chart-lazy";
 import { RecentAnalysisTable } from "@/components/dashboard/recent-analysis-table";
 import { StockSearch } from "@/components/dashboard/stock-search";
+import { APP_PAGE_CLASS } from "@/lib/layout";
 import { getMarketOverview } from "@/lib/services/market-service";
 
 export default async function DashboardPage() {
   const market = await getMarketOverview();
 
   return (
-    <div className="container mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-6">
+    <div className={APP_PAGE_CLASS}>
       <StockSearch />
       <MarketOverview data={market.overview} />
       <FeaturedStocks stocks={market.featured} />

@@ -36,7 +36,7 @@ export function StockMarketContext({ analysis }: { analysis: StockAnalysis }) {
             <span className="text-sm">
               Index: <strong>{marketContext.pseiIndex}</strong>
             </span>
-            <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+            <Badge className="border-trend-up/30 bg-trend-up/10 text-trend-up hover:bg-trend-up/10">
               {marketContext.pseiChange}
             </Badge>
             <span className="text-sm text-muted-foreground">

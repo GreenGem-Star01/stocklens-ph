@@ -1,15 +1,12 @@
-import { ForecastDisclaimer } from "@/components/dashboard/forecast-disclaimer";
-import { WatchlistCards } from "@/components/watchlist/watchlist-cards";
+import { WatchlistContent } from "@/components/watchlist/watchlist-content";
 import { WatchlistHeader } from "@/components/watchlist/watchlist-header";
-import { WatchlistTable } from "@/components/watchlist/watchlist-table";
+import { APP_PAGE_CLASS } from "@/lib/layout";
 
 export default function WatchlistPage() {
   return (
-    <div className="container mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6">
+    <div className={APP_PAGE_CLASS}>
       <WatchlistHeader />
-      <WatchlistCards />
-      <WatchlistTable />
-      <ForecastDisclaimer />
+      <WatchlistContent />
     </div>
   );
 }

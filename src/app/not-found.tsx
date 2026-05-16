@@ -10,7 +10,7 @@ export default function NotFound() {
         <h1 className="text-3xl font-semibold">Page not found</h1>
         <p className="max-w-md text-muted-foreground">
           The page or stock ticker you requested does not exist. Try a supported
-          ticker such as BDO.PS, JFC.PS, or ALI.PS.
+          ticker such as BDO.PS, SM.PS, or MBT.PS (30 blue chips supported).
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-3">

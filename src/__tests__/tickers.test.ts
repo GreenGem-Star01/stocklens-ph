@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BLUE_CHIP_TICKERS,
   resolveTickerFromInput,
+  SUPPORTED_TICKERS,
   TICKER_PATHS,
 } from "@/lib/constants/tickers";
 import { pathToTicker, tickerToPath } from "@/lib/forecast";
@@ -24,6 +26,15 @@ describe("ticker registry", () => {
 
   it("knows all supported paths", () => {
     expect(TICKER_PATHS.has("psei")).toBe(true);
+    expect(TICKER_PATHS.has("sm")).toBe(true);
+    expect(TICKER_PATHS.has("mbt")).toBe(true);
     expect(TICKER_PATHS.has("invalid")).toBe(false);
+  });
+
+  it("includes 30 blue chips plus PSEi index", () => {
+    expect(BLUE_CHIP_TICKERS).toHaveLength(30);
+    expect(SUPPORTED_TICKERS).toHaveLength(31);
+    expect(resolveTickerFromInput("SM.PS")?.ticker).toBe("SM.PS");
+    expect(resolveTickerFromInput("mbt")?.ticker).toBe("MBT.PS");
   });
 });

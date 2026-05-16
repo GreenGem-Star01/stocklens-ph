@@ -9,6 +9,7 @@ import { StockMetrics } from "@/components/stock/stock-metrics";
 import { StockModelComparison } from "@/components/stock/stock-model-comparison";
 import { StockPerformance } from "@/components/stock/stock-performance";
 import { pathToTicker } from "@/lib/forecast";
+import { APP_PAGE_CLASS } from "@/lib/layout";
 import { getStockAnalysis } from "@/lib/services/stock-service";
 
 type StockPageProps = {
@@ -30,13 +31,13 @@ export default async function StockPage({ params }: StockPageProps) {
   }
 
   return (
-    <div className="container mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6">
+    <div className={APP_PAGE_CLASS}>
       <StockHeader analysis={analysis} />
       <StockMetrics analysis={analysis} />
       <StockForecastSection analysis={analysis} />
       <StockDisclaimerAlert />
-      <StockPerformance analysis={analysis} />
       <StockModelComparison analysis={analysis} />
+      <StockPerformance analysis={analysis} />
       <StockAiInsight analysis={analysis} />
       <StockMarketContext analysis={analysis} />
     </div>

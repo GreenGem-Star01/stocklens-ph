@@ -32,13 +32,14 @@ Keep ~2GB free disk space; corrupted `.next` caches can cause 500 errors.
 |-------|-------------|
 | `/` | Landing page |
 | `/dashboard` | Market overview, search, featured stocks |
+| `/stocks` | Browse all 30 blue-chip tickers (search + sector filter) |
 | `/watchlist` | Persistent watchlist (localStorage) |
 | `/forecasts` | Forecast summary and model comparison |
 | `/settings` | Preferences (localStorage) |
 | `/terms` | Terms & conditions |
-| `/stock/[ticker]` | Stock analysis (`bdo`, `jfc`, `ali`, `tel`, `smph`, `psei`) |
+| `/stock/[ticker]` | Stock analysis (e.g. `bdo`, `sm`, `mbt`, `jfc`, `psei`) |
 
-Supported tickers: `BDO.PS`, `JFC.PS`, `ALI.PS`, `TEL.PS`, `SMPH.PS`, `PSEI.PS`.
+Supported: **30 PSE blue-chip equities** plus `PSEI.PS` (see `src/lib/data/stock-seeds.ts`).
 
 ## API (BFF)
 

@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { tickerToPath } from "@/lib/forecast";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
 
@@ -96,8 +97,11 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
       <CardHeader>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <CardTitle className="text-xl">
+            <CardTitle className="flex flex-wrap items-center gap-2 text-xl">
               Historical Close Price + 7-Day LSTM Forecast
+              <Badge variant="secondary" className="text-xs font-normal">
+                Experimental
+              </Badge>
             </CardTitle>
             <CardDescription className="mt-1">
               Solid line shows historical data. Dashed line shows AI forecast.
@@ -139,11 +143,18 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
         </div>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <ChartSkeleton />
-        ) : (
+        <div className="relative min-h-[500px]">
           <StockForecastChart analysis={chartAnalysis} />
-        )}
+          {loading ? (
+            <div
+              className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-[1px]"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <div className="pointer-events-none h-full w-full animate-pulse rounded-lg border bg-muted/40 opacity-90" />
+            </div>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );

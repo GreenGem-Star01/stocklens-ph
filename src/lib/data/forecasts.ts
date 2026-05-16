@@ -1,4 +1,8 @@
 import type { ForecastTrend } from "@/lib/types/stock";
+import type { StockAnalysis } from "@/lib/types/stock-analysis";
+
+import { getAllStockAnalyses } from "@/lib/data/stocks";
+import { isUpwardTrend } from "@/lib/forecast";
 
 export type StockForecast = {
   ticker: string;
@@ -20,73 +24,47 @@ export type ModelPerformance = {
   avgAccuracy: string;
 };
 
-export const allForecasts: StockForecast[] = [
-  {
-    ticker: "BDO.PS",
-    company: "BDO Unibank",
-    sector: "Financials",
-    currentPrice: "₱138.50",
-    forecast7d: "₱142.00",
-    trend: "Projected Upward",
-    accuracy: "68%",
+function parsePrice(value: string): number {
+  const cleaned = value.replace(/[₱,\s]/g, "");
+  return Number.parseFloat(cleaned) || 0;
+}
+
+function expectedChangePct(
+  current: string,
+  forecast: string,
+): string | undefined {
+  const from = parsePrice(current);
+  const to = parsePrice(forecast);
+  if (!from || !to) return undefined;
+  const pct = ((to - from) / from) * 100;
+  const sign = pct >= 0 ? "+" : "";
+  return `${sign}${pct.toFixed(1)}%`;
+}
+
+function analysisToForecast(analysis: StockAnalysis): StockForecast {
+  const { info, metrics, trend, forecastTarget, performance } = analysis;
+  const expectedChange = expectedChangePct(
+    metrics.lastClose,
+    forecastTarget,
+  );
+  return {
+    ticker: info.ticker,
+    company: info.name.replace(/, Inc\.| Corporation/g, "").trim(),
+    sector: info.sector,
+    currentPrice: metrics.lastClose,
+    forecast7d: forecastTarget,
+    trend,
+    accuracy: performance.directionalAccuracy,
     date: "2026-05-16",
-    expectedChange: "+2.5%",
-  },
-  {
-    ticker: "JFC.PS",
-    company: "Jollibee Foods",
-    sector: "Consumer",
-    currentPrice: "₱242.00",
-    forecast7d: "₱248.50",
-    trend: "Projected Upward",
-    accuracy: "65%",
-    date: "2026-05-16",
-    expectedChange: "+2.5%",
-  },
-  {
-    ticker: "ALI.PS",
-    company: "Ayala Land",
-    sector: "Real Estate",
-    currentPrice: "₱32.15",
-    forecast7d: "₱31.80",
-    trend: "Projected Downward",
-    accuracy: "62%",
-    date: "2026-05-16",
-    expectedChange: "-1.1%",
-  },
-  {
-    ticker: "TEL.PS",
-    company: "PLDT Inc.",
-    sector: "Telecom",
-    currentPrice: "₱1,285.00",
-    forecast7d: "₱1,290.00",
-    trend: "Mixed Signal",
-    accuracy: "59%",
-    date: "2026-05-16",
-  },
-  {
-    ticker: "SMPH.PS",
-    company: "SM Prime",
-    sector: "Real Estate",
-    currentPrice: "₱28.90",
-    forecast7d: "₱29.50",
-    trend: "Projected Upward",
-    accuracy: "71%",
-    date: "2026-05-16",
-    expectedChange: "+2.5%",
-  },
-  {
-    ticker: "PSEI.PS",
-    company: "PSEi Index",
-    sector: "Index",
-    currentPrice: "6,480",
-    forecast7d: "6,520",
-    trend: "Projected Upward",
-    accuracy: "64%",
-    date: "2026-05-16",
-    expectedChange: "+2.5%",
-  },
-];
+    ...(expectedChange && trend !== "Mixed Signal"
+      ? { expectedChange }
+      : {}),
+  };
+}
+
+export const allForecasts: StockForecast[] = getAllStockAnalyses()
+  .filter((a) => a.info.ticker !== "PSEI.PS")
+  .map(analysisToForecast);
 
 export const modelPerformance: ModelPerformance[] = [
   {
@@ -119,10 +97,15 @@ export const modelPerformance: ModelPerformance[] = [
   },
 ];
 
+const upwardCount = allForecasts.filter((f) => isUpwardTrend(f.trend)).length;
+
 export const forecastSummary = {
-  totalToday: 6,
+  totalToday: allForecasts.length,
   lastUpdated: "May 16, 2026",
-  averageAccuracy: "65%",
-  upwardCount: 4,
-  upwardPercent: "67%",
+  averageAccuracy: "64%",
+  upwardCount,
+  upwardPercent:
+    allForecasts.length > 0
+      ? `${Math.round((upwardCount / allForecasts.length) * 100)}%`
+      : "0%",
 };

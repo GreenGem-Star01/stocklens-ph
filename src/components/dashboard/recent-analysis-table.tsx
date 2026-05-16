@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { TrendBadge } from "@/components/ui/trend-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,6 +12,7 @@ import {
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { recentAnalysis as defaultRecent } from "@/lib/data/dashboard";
 import type { RecentAnalysisRow } from "@/lib/types/stock";
-import { getTrendBadgeVariant, tickerToPath } from "@/lib/forecast";
+import { tickerToPath } from "@/lib/forecast";
 
 export function RecentAnalysisTable({
   rows = defaultRecent,
@@ -34,6 +35,7 @@ export function RecentAnalysisTable({
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>
+          <TableCaption className="sr-only">Recent stock analyses</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Ticker</TableHead>
@@ -51,9 +53,7 @@ export function RecentAnalysisTable({
                 <TableCell>{item.company}</TableCell>
                 <TableCell>{item.close}</TableCell>
                 <TableCell>
-                  <Badge variant={getTrendBadgeVariant(item.trend)}>
-                    {item.trend}
-                  </Badge>
+                  <TrendBadge trend={item.trend} />
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {item.updated}

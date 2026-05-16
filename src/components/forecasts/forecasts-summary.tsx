@@ -6,7 +6,7 @@ import { forecastSummary } from "@/lib/data/forecasts";
 export function ForecastsSummary() {
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <Card>
+      <Card className="card-interactive">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
@@ -21,7 +21,7 @@ export function ForecastsSummary() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="card-interactive">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
@@ -38,10 +38,10 @@ export function ForecastsSummary() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="card-interactive">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-emerald-600" />
+            <TrendingUp className="h-5 w-5 text-trend-up" />
             <CardDescription>Projected Upward Forecasts</CardDescription>
           </div>
         </CardHeader>

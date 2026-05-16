@@ -15,12 +15,15 @@ import {
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getTrendBadgeVariant, tickerToPath } from "@/lib/forecast";
+import { PriceChange } from "@/components/ui/price-change";
+import { TrendBadge } from "@/components/ui/trend-badge";
+import { tickerToPath } from "@/lib/forecast";
 import { useWatchlistStore } from "@/lib/stores/watchlist-store";
 
 export function WatchlistTable() {
@@ -28,13 +31,14 @@ export function WatchlistTable() {
   const removeStock = useWatchlistStore((s) => s.removeStock);
 
   return (
-    <Card>
+    <Card className="card-interactive">
       <CardHeader>
         <CardTitle>Watchlist Details</CardTitle>
         <CardDescription>Complete view of your tracked stocks</CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        <Table>
+        <Table className="min-w-[720px]">
+          <TableCaption className="sr-only">Watchlist stocks</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Ticker</TableHead>
@@ -50,7 +54,9 @@ export function WatchlistTable() {
           <TableBody>
             {stocks.map((stock) => (
               <TableRow key={stock.ticker}>
-                <TableCell className="font-medium">{stock.ticker}</TableCell>
+                <TableCell className="sticky left-0 bg-card font-medium">
+                  {stock.ticker}
+                </TableCell>
                 <TableCell>{stock.name}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="text-xs">
@@ -59,18 +65,10 @@ export function WatchlistTable() {
                 </TableCell>
                 <TableCell>{stock.price}</TableCell>
                 <TableCell>
-                  <span
-                    className={`font-medium ${
-                      stock.positive ? "text-emerald-600" : "text-red-600"
-                    }`}
-                  >
-                    {stock.change}
-                  </span>
+                  <PriceChange change={stock.change} positive={stock.positive} />
                 </TableCell>
                 <TableCell>
-                  <Badge variant={getTrendBadgeVariant(stock.trend)}>
-                    {stock.trend}
-                  </Badge>
+                  <TrendBadge trend={stock.trend} />
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {stock.addedDate}
@@ -87,7 +85,15 @@ export function WatchlistTable() {
                       size="sm"
                       className="text-destructive hover:text-destructive"
                       aria-label={`Remove ${stock.ticker}`}
-                      onClick={() => removeStock(stock.ticker)}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Remove ${stock.ticker} from your watchlist?`,
+                          )
+                        ) {
+                          removeStock(stock.ticker);
+                        }
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

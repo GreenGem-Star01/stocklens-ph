@@ -3,16 +3,22 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { WATCHLIST_MAX_STOCKS } from "@/lib/constants/watchlist";
 import { watchlistStocks as seedWatchlist } from "@/lib/data/watchlist";
 import type { WatchlistStock } from "@/lib/data/watchlist";
 import { TICKER_BY_SYMBOL } from "@/lib/constants/tickers";
 import { getStockAnalysisStatic } from "@/lib/data/stocks";
 
+export type AddStockResult =
+  | { ok: true }
+  | { ok: false; reason: "duplicate" | "invalid" | "limit" };
+
 type WatchlistState = {
   stocks: WatchlistStock[];
-  addStock: (ticker: string) => boolean;
+  addStock: (ticker: string) => AddStockResult;
   removeStock: (ticker: string) => void;
   hasStock: (ticker: string) => boolean;
+  isAtLimit: () => boolean;
 };
 
 function toWatchlistEntry(ticker: string): WatchlistStock | null {
@@ -45,12 +51,15 @@ export const useWatchlistStore = create<WatchlistState>()(
       addStock: (ticker) => {
         const normalized = ticker.toUpperCase();
         if (get().stocks.some((s) => s.ticker === normalized)) {
-          return false;
+          return { ok: false, reason: "duplicate" };
+        }
+        if (get().stocks.length >= WATCHLIST_MAX_STOCKS) {
+          return { ok: false, reason: "limit" };
         }
         const entry = toWatchlistEntry(normalized);
-        if (!entry) return false;
+        if (!entry) return { ok: false, reason: "invalid" };
         set((state) => ({ stocks: [...state.stocks, entry] }));
-        return true;
+        return { ok: true };
       },
       removeStock: (ticker) => {
         const normalized = ticker.toUpperCase();
@@ -60,10 +69,20 @@ export const useWatchlistStore = create<WatchlistState>()(
       },
       hasStock: (ticker) =>
         get().stocks.some((s) => s.ticker === ticker.toUpperCase()),
+      isAtLimit: () => get().stocks.length >= WATCHLIST_MAX_STOCKS,
     }),
     {
       name: "stocklens-watchlist",
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = persisted as { stocks?: WatchlistStock[] };
+        if (version < 2 && Array.isArray(state.stocks)) {
+          return {
+            stocks: state.stocks.slice(0, WATCHLIST_MAX_STOCKS),
+          };
+        }
+        return persisted as WatchlistState;
+      },
     },
   ),
 );

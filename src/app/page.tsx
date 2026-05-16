@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { GITHUB_REPO_URL } from "@/lib/constants/site";
 import { FORECAST_DISCLAIMER } from "@/lib/forecast";
 
 const features = [
@@ -72,10 +73,23 @@ export default function LandingPage() {
               Explore Philippine stock trends with AI-assisted forecasting and
               model comparison.
             </p>
-            <div className="pt-4">
+            <p className="text-sm font-medium text-muted-foreground">
+              30 PSE blue-chip tickers · 7-day experimental forecasts
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
               <Link href="/dashboard">
                 <Button size="lg" className="px-8 py-6 text-lg">
                   Start Analyzing
+                </Button>
+              </Link>
+              <Link href="/stock/bdo">
+                <Button size="lg" variant="outline" className="px-8 py-6 text-lg">
+                  View sample analysis
+                </Button>
+              </Link>
+              <Link href="/watchlist">
+                <Button size="lg" variant="ghost" className="px-6 py-6 text-lg">
+                  Watchlist
                 </Button>
               </Link>
             </div>
@@ -87,7 +101,7 @@ export default function LandingPage() {
             {features.map(({ icon: Icon, title, description }) => (
               <Card
                 key={title}
-                className="border-2 transition-colors hover:border-primary/50"
+                className="card-interactive border-2"
               >
                 <CardHeader>
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
@@ -138,8 +152,26 @@ export default function LandingPage() {
       </main>
 
       <footer className="mt-16 w-full border-t">
-        <div className={`${pageContainer} py-8 text-center text-sm text-muted-foreground`}>
+        <div
+          className={`${pageContainer} flex flex-col items-center gap-3 py-8 text-center text-sm text-muted-foreground sm:flex-row sm:justify-between sm:text-left`}
+        >
           <p>© 2026 StockLens PH. Educational tool for stock analysis research.</p>
+          <nav className="flex flex-wrap justify-center gap-4 sm:justify-end">
+            <Link href="/dashboard" className="hover:text-foreground">
+              Dashboard
+            </Link>
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground"
+            >
+              GitHub
+            </a>
+          </nav>
         </div>
       </footer>
     </div>

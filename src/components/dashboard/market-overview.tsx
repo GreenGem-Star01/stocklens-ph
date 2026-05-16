@@ -2,6 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { PriceChange } from "@/components/ui/price-change";
 import { marketOverview as defaultOverview } from "@/lib/data/dashboard";
 
 type MarketOverviewData = typeof defaultOverview;
@@ -16,14 +17,10 @@ function OverviewStat({
   positive: boolean;
 }) {
   return (
-    <>
+    <div className="space-y-1">
       <div className="text-sm font-medium">{ticker}</div>
-      <div
-        className={`font-semibold ${positive ? "text-emerald-600" : "text-red-600"}`}
-      >
-        {change}
-      </div>
-    </>
+      <PriceChange change={change} positive={positive} className="font-semibold" />
+    </div>
   );
 }
 
@@ -34,19 +31,19 @@ export function MarketOverview({
 }) {
   return (
     <section>
-      <h3 className="mb-4 text-lg font-medium">Market Overview</h3>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <h3 className="mb-4">Market Overview</h3>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>PSEi Trend</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-semibold">
+              <span className="tabular-nums text-2xl font-semibold">
                 {data.pseiValue}
               </span>
-              <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
-                <ArrowUpRight className="mr-1 h-3 w-3" />
+              <Badge className="trend-chip-up hover:opacity-90">
+                <ArrowUpRight className="mr-1 h-3 w-3" aria-hidden />
                 {data.pseiChange}
               </Badge>
             </div>
@@ -84,7 +81,7 @@ export function MarketOverview({
             <CardDescription>Market Status</CardDescription>
           </CardHeader>
           <CardContent>
-            <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+            <Badge className="trend-chip-up hover:opacity-90">
               {data.marketStatus}
             </Badge>
             <p className="mt-1 text-xs text-muted-foreground">

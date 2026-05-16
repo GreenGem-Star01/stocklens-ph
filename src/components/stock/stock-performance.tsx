@@ -18,7 +18,7 @@ export function StockPerformance({ analysis }: { analysis: StockAnalysis }) {
 
 function MetricCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <Card>
+    <Card className="card-interactive">
       <CardHeader className="pb-2">
         <CardDescription>{label}</CardDescription>
       </CardHeader>

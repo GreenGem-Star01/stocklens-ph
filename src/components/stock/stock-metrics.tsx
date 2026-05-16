@@ -1,6 +1,5 @@
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { PriceChange, PriceDirectionIcon } from "@/components/ui/price-change";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
 
 export function StockMetrics({ analysis }: { analysis: StockAnalysis }) {
@@ -12,7 +11,7 @@ export function StockMetrics({ analysis }: { analysis: StockAnalysis }) {
           <CardDescription>Last Close</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-semibold">{metrics.lastClose}</div>
+          <div className="tabular-nums text-3xl font-semibold">{metrics.lastClose}</div>
         </CardContent>
       </Card>
       <Card>
@@ -50,18 +49,15 @@ function DailyChangeValue({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span
-        className={`text-3xl font-semibold ${
-          metrics.dailyChangePositive ? "text-emerald-600" : "text-red-600"
-        }`}
-      >
-        {metrics.dailyChange}
-      </span>
-      {metrics.dailyChangePositive ? (
-        <ArrowUpRight className="h-6 w-6 text-emerald-600" />
-      ) : (
-        <ArrowDownRight className="h-6 w-6 text-red-600" />
-      )}
+      <PriceChange
+        change={metrics.dailyChange}
+        positive={metrics.dailyChangePositive}
+        className="text-3xl font-semibold"
+      />
+      <PriceDirectionIcon
+        positive={metrics.dailyChangePositive}
+        className="h-6 w-6"
+      />
     </div>
   );
 }

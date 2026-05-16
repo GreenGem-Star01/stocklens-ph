@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,42 +11,29 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { WatchlistStock } from "@/lib/data/watchlist";
-import { getTrendBadgeVariant, tickerToPath } from "@/lib/forecast";
+import { PriceChange, PriceDirectionIcon } from "@/components/ui/price-change";
+import { TrendBadge } from "@/components/ui/trend-badge";
+import { tickerToPath } from "@/lib/forecast";
 import { useWatchlistStore } from "@/lib/stores/watchlist-store";
 
 function WatchlistCard({ stock }: { stock: WatchlistStock }) {
   return (
-    <Card className="transition-colors hover:border-primary/50">
+    <Card className="card-interactive">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <WatchlistCardMeta stock={stock} />
-          {stock.positive ? (
-            <ArrowUpRight className="h-5 w-5 text-emerald-600" />
-          ) : (
-            <ArrowDownRight className="h-5 w-5 text-red-600" />
-          )}
+          <PriceDirectionIcon positive={stock.positive} />
         </div>
       </CardHeader>
       <CardContent>
         <div className="mb-2 flex items-end justify-between">
-          <span className="text-2xl font-semibold">{stock.price}</span>
-          <span
-            className={`text-sm font-medium ${
-              stock.positive ? "text-emerald-600" : "text-red-600"
-            }`}
-          >
-            {stock.change}
-          </span>
+          <span className="tabular-nums text-2xl font-semibold">{stock.price}</span>
+          <PriceChange change={stock.change} positive={stock.positive} className="text-sm" />
         </div>
         <div className="mt-3 flex items-center justify-between text-xs">
           <div className="flex items-center gap-1">
             <span className="text-muted-foreground">Trend:</span>
-            <Badge
-              variant={getTrendBadgeVariant(stock.trend)}
-              className="text-xs"
-            >
-              {stock.trend}
-            </Badge>
+            <TrendBadge trend={stock.trend} className="text-xs" />
           </div>
           <Link href={`/stock/${tickerToPath(stock.ticker)}`}>
             <Button variant="ghost" size="sm" className="h-7">

@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import type { ThemeMode } from "@/lib/theme";
+
 export type SettingsState = {
   forecastUpdates: boolean;
   priceAlerts: boolean;
@@ -15,6 +17,7 @@ export type SettingsState = {
   currencyDisplay: string;
   autoRefresh: boolean;
   showDisclaimerBanners: boolean;
+  theme: ThemeMode;
   setField: <K extends keyof Omit<SettingsState, "setField" | "reset">>(
     key: K,
     value: SettingsState[K] | string,
@@ -34,6 +37,12 @@ const defaults: Omit<SettingsState, "setField" | "reset"> = {
   currencyDisplay: "php",
   autoRefresh: true,
   showDisclaimerBanners: true,
+  theme: "light",
+};
+
+type PersistedSettingsV1 = {
+  darkMode?: boolean;
+  theme?: ThemeMode;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -45,7 +54,21 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: "stocklens-settings",
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = { ...defaults, ...(persisted as Partial<SettingsState>) };
+
+        if (version < 2) {
+          const legacy = persisted as PersistedSettingsV1;
+          if (legacy.theme && ["light", "dark", "system"].includes(legacy.theme)) {
+            state.theme = legacy.theme;
+          } else if (typeof legacy.darkMode === "boolean") {
+            state.theme = legacy.darkMode ? "dark" : "light";
+          }
+        }
+
+        return state;
+      },
     },
   ),
 );

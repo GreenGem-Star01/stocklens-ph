@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import {
   CartesianGrid,
   Line,
@@ -11,12 +12,27 @@ import {
   YAxis,
 } from "recharts";
 
+import { ChartLegend } from "@/components/charts/chart-legend";
+import { ChartTooltip } from "@/components/charts/chart-tooltip";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
 
 export function StockForecastChart({ analysis }: { analysis: StockAnalysis }) {
+  const mounted = useIsClient();
+
+  if (!mounted) {
+    return (
+      <div className="h-[500px] min-h-[320px] animate-pulse rounded-lg border bg-muted/30" />
+    );
+  }
+
   return (
-    <div className="h-[500px] min-h-[320px] min-w-0 w-full">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+    <div
+      className="h-[500px] min-h-[320px] min-w-0 w-full"
+      role="img"
+      aria-label={`Price chart for ${analysis.info.ticker} with historical and forecast lines`}
+    >
+      <ChartLegend />
+      <ResponsiveContainer width="100%" height="92%" minWidth={0}>
         <LineChart data={analysis.chartData}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
@@ -26,18 +42,13 @@ export function StockForecastChart({ analysis }: { analysis: StockAnalysis }) {
             tickLine={false}
             axisLine={false}
           />
-          <Tooltip
-            contentStyle={{
-              borderRadius: "var(--radius)",
-              border: "1px solid var(--border)",
-            }}
-          />
+          <Tooltip content={<ChartTooltip />} />
           <ReferenceLine
             x={analysis.forecastStartDate}
             stroke="var(--muted-foreground)"
             strokeDasharray="3 3"
             label={{
-              value: "Forecast starts here →",
+              value: "Forecast starts",
               position: "top",
               fill: "var(--muted-foreground)",
               fontSize: 12,
@@ -61,7 +72,7 @@ export function StockForecastChart({ analysis }: { analysis: StockAnalysis }) {
             strokeDasharray="8 4"
             dot={{ r: 4 }}
             activeDot={{ r: 6 }}
-            name="LSTM Forecast"
+            name="Forecast"
             connectNulls={false}
           />
         </LineChart>

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Bell, ChartLine, Database, Shield } from "lucide-react";
+import { Bell, ChartLine, Database, Palette, Shield } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { ThemeModeSetting } from "@/components/settings/theme-mode-setting";
 import { FORECAST_DISCLAIMER } from "@/lib/forecast";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 
@@ -52,12 +54,40 @@ export function SettingsForm() {
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
+    toast.success("Settings saved.");
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handleReset = () => {
+    settings.reset();
+    toast.message("Settings reset to defaults.");
+  };
+
   return (
     <>
+      <div className="space-y-1">
+        <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground">
+          Preferences for display, forecasts, and notifications.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-primary" />
+            <CardTitle>Appearance</CardTitle>
+          </div>
+          <CardDescription>
+            Color mode applies across the dashboard, stock pages, and settings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThemeModeSetting />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -260,9 +290,9 @@ export function SettingsForm() {
 
       <div className="flex items-center justify-end gap-3">
         {saved ? (
-          <span className="text-sm text-emerald-600">Settings saved</span>
+          <span className="text-sm text-trend-up">Settings saved</span>
         ) : null}
-        <Button variant="outline" onClick={() => settings.reset()}>
+        <Button variant="outline" onClick={handleReset}>
           Reset to Defaults
         </Button>
         <Button onClick={handleSave}>Save Changes</Button>
