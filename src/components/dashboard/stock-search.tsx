@@ -8,7 +8,7 @@ import { Search } from "lucide-react";
 import { PopularTickerChips } from "@/components/dashboard/popular-ticker-chips";
 import { Button } from "@/components/ui/button";
 import { TickerCombobox } from "@/components/shared/ticker-combobox";
-import { getEquityDirectoryCount } from "@/lib/data/stock-directory";
+import { getListedEquityCount } from "@/lib/constants/tickers";
 import { tickerToPath } from "@/lib/forecast";
 
 export function StockSearch() {
@@ -62,7 +62,7 @@ export function StockSearch() {
               href="/stocks"
               className="font-medium text-foreground underline-offset-4 hover:underline"
             >
-              browse all {getEquityDirectoryCount()} stocks
+              browse all {getListedEquityCount()} stocks
             </Link>
             .
           </p>

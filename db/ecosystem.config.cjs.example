@@ -1,0 +1,20 @@
+/**
+ * PM2 example for DSS. Copy to ecosystem.config.cjs and set env_file or env block.
+ * See db/DSS-OPS.md
+ */
+module.exports = {
+  apps: [
+    {
+      name: "stocklens",
+      cwd: "/var/www/stocklens-ph",
+      script: "npm",
+      args: "start",
+      env: {
+        NODE_ENV: "production",
+        MARKET_DATA_SOURCE: "db",
+        // Use readonly pooler URL — not .env.ingest
+        DATABASE_URL: "postgresql://READONLY:PASSWORD@HOST.pooler.supabase.com:6543/postgres?pgbouncer=true",
+      },
+    },
+  ],
+};

@@ -2,6 +2,12 @@ import type { ForecastTrend } from "@/lib/types/stock";
 import type { ChartPoint, StockAnalysis } from "@/lib/types/stock-analysis";
 
 import type { StockSeed } from "@/lib/data/stock-seeds";
+import {
+  directionFromChangePct,
+  formatChangePct,
+} from "@/lib/market/change-direction";
+import { stockChartYAxisDomain } from "@/lib/market/chart-domain";
+import { resolveListingLabels } from "@/lib/pse/apply-official-labels";
 
 const MODEL_ROWS = [
   {
@@ -72,17 +78,15 @@ function roundToTick(price: number, ref: number): number {
 
 function formatPrice(amount: number, isIndex: boolean): string {
   if (isIndex) {
-    return amount.toLocaleString("en-PH", { maximumFractionDigits: 0 });
+    return amount.toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   }
   if (amount >= 1000) {
     return `₱${amount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
   return `₱${amount.toFixed(2)}`;
-}
-
-function formatChange(pct: number): string {
-  const sign = pct >= 0 ? "+" : "";
-  return `${sign}${pct.toFixed(1)}%`;
 }
 
 function formatVolume(millions: number): string {
@@ -167,12 +171,9 @@ function buildChart(historical: number[], forecast: number[]): ChartPoint[] {
 function chartDomain(
   historical: number[],
   forecast: number[],
+  isIndex: boolean,
 ): [number, number] {
-  const all = [...historical, ...forecast];
-  const min = Math.min(...all);
-  const max = Math.max(...all);
-  const pad = (max - min) * 0.08 || max * 0.02;
-  return [min - pad, max + pad];
+  return stockChartYAxisDomain([...historical, ...forecast], { isIndex });
 }
 
 function sectorNote(sector: string, positive: boolean): string {
@@ -195,14 +196,20 @@ function trendSummary(
 }
 
 export function buildStockAnalysisFromSeed(seed: StockSeed): StockAnalysis {
-  const isIndex = seed.sector === "Index";
+  const labels = resolveListingLabels(
+    seed.ticker,
+    seed.sector,
+    seed.sector,
+  );
+  const isIndex = labels.sector === "Index";
   const hash = seedHash(seed.ticker);
   const historical = buildHistorical(seed.lastClose, seed.trend, hash);
   const forecast = buildForecast(seed.lastClose, seed.trend, hash);
   const chartData = buildChart(historical, forecast);
   const forecastTarget = forecast[forecast.length - 1] ?? seed.lastClose;
-  const domain = chartDomain(historical, forecast);
-  const positive = seed.dailyChangePct >= 0;
+  const domain = chartDomain(historical, forecast, isIndex);
+  const changeDirection = directionFromChangePct(seed.dailyChangePct);
+  const positive = changeDirection === "up";
   const weekLow = seed.lastClose * (1 - seed.weekLowPct / 100);
   const weekHigh = seed.lastClose * (1 + seed.weekHighPct / 100);
 
@@ -214,11 +221,12 @@ export function buildStockAnalysisFromSeed(seed: StockSeed): StockAnalysis {
     info: {
       name: seed.name,
       ticker: seed.ticker,
-      sector: seed.sector,
+      sector: labels.sector,
+      subsector: labels.subsector,
     },
     metrics: {
       lastClose: formatPrice(seed.lastClose, isIndex),
-      dailyChange: formatChange(seed.dailyChangePct),
+      dailyChange: formatChangePct(seed.dailyChangePct),
       dailyChangePositive: positive,
       volume: formatVolume(seed.volumeM),
       weekRange: isIndex
@@ -245,14 +253,14 @@ export function buildStockAnalysisFromSeed(seed: StockSeed): StockAnalysis {
     aiInsight: {
       summary: trendSummary(seed, forecastTarget, isIndex),
       caution: `Directional accuracy is ${seed.directionalAccuracy}% for this ticker. Use for research only—not investment advice.`,
-      context: sectorNote(seed.sector, positive),
+      context: sectorNote(labels.sector, positive),
     },
     marketContext: {
       disclosures: [seed.disclosure1, seed.disclosure2],
-      pseiIndex: "6,480",
-      pseiChange: "+0.3%",
+      pseiIndex: "5,893",
+      pseiChange: "+0.1%",
       pseiPositive: true,
-      sectorNote: sectorNote(seed.sector, positive),
+      sectorNote: sectorNote(labels.sector, positive),
     },
   };
 }

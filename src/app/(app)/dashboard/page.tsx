@@ -13,6 +13,22 @@ export default async function DashboardPage() {
   return (
     <div className={APP_PAGE_CLASS}>
       <StockSearch />
+      {market.dbUnreachable ? (
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">
+          Database unreachable — showing static snapshot. Fix{" "}
+          <code className="text-xs">DATABASE_URL</code> in{" "}
+          <code className="text-xs">.env.local</code> (full host:{" "}
+          <code className="text-xs">aws-1-ap-southeast-1.pooler...</code>
+          ), run <code className="text-xs">npm run health:market</code>, then
+          restart dev.
+        </p>
+      ) : null}
+      {market.quotesAsOf ? (
+        <p className="text-sm text-muted-foreground">
+          Market prices as of {market.quotesAsOf}
+          {market.stale ? " · data may be stale" : ""}
+        </p>
+      ) : null}
       <MarketOverview data={market.overview} />
       <FeaturedStocks stocks={market.featured} />
       <PseiChart data={market.pseiChart} />

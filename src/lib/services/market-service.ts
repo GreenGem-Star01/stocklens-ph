@@ -1,5 +1,14 @@
-import { getMarketOverviewData } from "@/lib/api/market-provider";
+import {
+  getDbFallbackMeta,
+  getMarketOverviewData,
+} from "@/lib/api/market-provider";
 
 export async function getMarketOverview() {
-  return getMarketOverviewData();
+  const data = await getMarketOverviewData();
+  const fallback = getDbFallbackMeta();
+  return {
+    ...data,
+    dbUnreachable: fallback.usedFallback,
+    dbUnreachableReason: fallback.fallbackReason,
+  };
 }

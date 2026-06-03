@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { directionFromChangeString } from "@/lib/market/change-direction";
 import { PriceChange, PriceDirectionIcon } from "@/components/ui/price-change";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
 
@@ -47,17 +48,15 @@ function DailyChangeValue({
 }: {
   metrics: StockAnalysis["metrics"];
 }) {
+  const direction = directionFromChangeString(metrics.dailyChange);
   return (
     <div className="flex items-center gap-2">
       <PriceChange
         change={metrics.dailyChange}
-        positive={metrics.dailyChangePositive}
+        direction={direction}
         className="text-3xl font-semibold"
       />
-      <PriceDirectionIcon
-        positive={metrics.dailyChangePositive}
-        className="h-6 w-6"
-      />
+      <PriceDirectionIcon direction={direction} className="h-6 w-6" />
     </div>
   );
 }

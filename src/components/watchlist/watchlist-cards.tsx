@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { WatchlistStock } from "@/lib/data/watchlist";
+import { directionFromChangeString } from "@/lib/market/change-direction";
 import { PriceChange, PriceDirectionIcon } from "@/components/ui/price-change";
 import { TrendBadge } from "@/components/ui/trend-badge";
 import { tickerToPath } from "@/lib/forecast";
@@ -22,13 +23,15 @@ function WatchlistCard({ stock }: { stock: WatchlistStock }) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <WatchlistCardMeta stock={stock} />
-          <PriceDirectionIcon positive={stock.positive} />
+          <PriceDirectionIcon
+            direction={directionFromChangeString(stock.change)}
+          />
         </div>
       </CardHeader>
       <CardContent>
         <div className="mb-2 flex items-end justify-between">
           <span className="tabular-nums text-2xl font-semibold">{stock.price}</span>
-          <PriceChange change={stock.change} positive={stock.positive} className="text-sm" />
+          <PriceChange change={stock.change} className="text-sm" />
         </div>
         <div className="mt-3 flex items-center justify-between text-xs">
           <div className="flex items-center gap-1">

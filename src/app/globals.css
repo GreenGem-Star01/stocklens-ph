@@ -47,6 +47,7 @@
   --color-trend-down-foreground: var(--trend-down-foreground);
   --color-trend-mixed: var(--trend-mixed);
   --color-trend-mixed-foreground: var(--trend-mixed-foreground);
+  --color-brand-accent: var(--brand-accent);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -89,6 +90,7 @@
   --trend-down-foreground: oklch(0.98 0.02 25);
   --trend-mixed: oklch(0.65 0.12 85);
   --trend-mixed-foreground: oklch(0.25 0.05 85);
+  --brand-accent: #0d6e6e;
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -132,6 +134,7 @@
   --trend-down-foreground: oklch(0.98 0.02 25);
   --trend-mixed: oklch(0.84 0.16 85);
   --trend-mixed-foreground: oklch(0.98 0.02 85);
+  --brand-accent: #0d6e6e;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

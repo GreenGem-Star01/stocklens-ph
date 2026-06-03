@@ -65,7 +65,7 @@ export function WatchlistTable() {
                 </TableCell>
                 <TableCell>{stock.price}</TableCell>
                 <TableCell>
-                  <PriceChange change={stock.change} positive={stock.positive} />
+                  <PriceChange change={stock.change} />
                 </TableCell>
                 <TableCell>
                   <TrendBadge trend={stock.trend} />

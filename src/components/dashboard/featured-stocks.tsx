@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { getEquityDirectoryCount } from "@/lib/data/stock-directory";
+import { getListedEquityCount } from "@/lib/constants/tickers";
 import {
   Card,
   CardContent,
@@ -42,7 +42,7 @@ function FeaturedHeader({ stock }: { stock: FeaturedStock }) {
         </div>
         <CardDescription className="text-xs">{stock.name}</CardDescription>
       </div>
-      <PriceDirectionIcon positive={stock.positive} />
+      <PriceDirectionIcon direction={stock.direction} />
     </div>
   );
 }
@@ -52,7 +52,11 @@ function FeaturedBody({ stock }: { stock: FeaturedStock }) {
     <>
       <div className="mb-2 flex items-end justify-between">
         <span className="tabular-nums text-2xl font-semibold">{stock.price}</span>
-        <PriceChange change={stock.change} positive={stock.positive} className="text-sm" />
+        <PriceChange
+          change={stock.change}
+          direction={stock.direction}
+          className="text-sm"
+        />
       </div>
       <div className="flex items-center gap-1 text-xs">
         <span className="text-muted-foreground">Model trend:</span>
@@ -75,7 +79,7 @@ export function FeaturedStocks({
           href="/stocks"
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
-          View all {getEquityDirectoryCount()} stocks →
+          View all {getListedEquityCount()} stocks →
         </Link>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

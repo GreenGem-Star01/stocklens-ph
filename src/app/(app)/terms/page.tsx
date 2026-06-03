@@ -42,6 +42,29 @@ export default function TermsPage() {
         <p className="rounded-lg border bg-muted/30 p-4 text-foreground">
           {FORECAST_DISCLAIMER}
         </p>
+
+        <h2 className="text-lg font-medium text-foreground">
+          PSE listing data
+        </h2>
+        <p>
+          Company names, sectors, and subsectors are sourced from the Philippine
+          Stock Exchange EDGE company directory and refreshed via{" "}
+          <code className="text-xs">npm run sync:pse</code>. StockLens PH is
+          not affiliated with the PSE. Official listings are for reference
+          only; prices and forecasts in demo mode may not match live market
+          data.
+        </p>
+
+        <h2 className="text-lg font-medium text-foreground">
+          Market prices (EOD)
+        </h2>
+        <p>
+          When database or snapshot mode is enabled, last prices and daily
+          changes come from batch end-of-day ingest via PSE EDGE (or optional
+          third-party fallback) stored in Postgres or a local snapshot. Data
+          may be delayed, incomplete, or inaccurate versus the PSE official
+          feed. Do not rely on displayed prices for trading decisions.
+        </p>
       </section>
 
       <Link href="/settings">

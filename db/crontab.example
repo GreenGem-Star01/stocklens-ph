@@ -1,0 +1,8 @@
+# Paste into crontab -e on the DSS VM (adjust /var/www/stocklens-ph).
+# See db/DSS-OPS.md for timezone notes.
+
+# EOD ingest — Mon–Fri (use 10 instead of 18 if VM timezone is UTC)
+0 18 * * 1-5 /var/www/stocklens-ph/db/cron.example.sh >> /var/log/stocklens-ingest.log 2>&1
+
+# PSE listing sync — Sunday 06:00
+0 6 * * 0 cd /var/www/stocklens-ph && npm run sync:pse >> /var/log/stocklens-sync.log 2>&1

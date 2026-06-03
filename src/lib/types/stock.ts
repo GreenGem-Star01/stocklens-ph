@@ -3,11 +3,15 @@ export type ForecastTrend =
   | "Projected Downward"
   | "Mixed Signal";
 
+import type { PriceDirection } from "@/lib/market/change-direction";
+
 export type FeaturedStock = {
   ticker: string;
   name: string;
   price: string;
   change: string;
+  direction: PriceDirection;
+  /** @deprecated Use `direction` */
   positive: boolean;
   sector: string;
   trend: ForecastTrend;

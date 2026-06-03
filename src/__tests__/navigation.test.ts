@@ -30,9 +30,10 @@ describe("ticker registry", () => {
     expect(TICKER_PATHS.has("invalid")).toBe(false);
   });
 
-  it("includes 30 blue chips plus PSEi index", () => {
+  it("resolves catalog and analyzed tickers", () => {
     expect(resolveTickerFromInput("SM.PS")?.ticker).toBe("SM.PS");
     expect(resolveTickerFromInput("mbt")?.ticker).toBe("MBT.PS");
+    expect(resolveTickerFromInput("AAA")?.ticker).toBe("AAA.PS");
   });
 });
 

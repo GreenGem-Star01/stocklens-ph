@@ -8,7 +8,6 @@ import { watchlistStocks as seedWatchlist } from "@/lib/data/watchlist";
 import type { WatchlistStock } from "@/lib/data/watchlist";
 import { TICKER_BY_SYMBOL } from "@/lib/constants/tickers";
 import { getStockAnalysisStatic } from "@/lib/data/stocks";
-
 export type AddStockResult =
   | { ok: true }
   | { ok: false; reason: "duplicate" | "invalid" | "limit" };
@@ -19,6 +18,7 @@ type WatchlistState = {
   removeStock: (ticker: string) => void;
   hasStock: (ticker: string) => boolean;
   isAtLimit: () => boolean;
+  refreshPrices: () => Promise<void>;
 };
 
 function toWatchlistEntry(ticker: string): WatchlistStock | null {
@@ -26,16 +26,15 @@ function toWatchlistEntry(ticker: string): WatchlistStock | null {
   if (!entry) return null;
 
   const analysis = getStockAnalysisStatic(entry.ticker);
-  if (!analysis) return null;
 
   return {
     ticker: entry.ticker,
     name: entry.name,
-    price: analysis.metrics.lastClose,
-    change: analysis.metrics.dailyChange,
-    positive: analysis.metrics.dailyChangePositive,
+    price: analysis?.metrics.lastClose ?? "—",
+    change: analysis?.metrics.dailyChange ?? "—",
+    positive: analysis?.metrics.dailyChangePositive ?? true,
     sector: entry.sector,
-    trend: analysis.trend,
+    trend: analysis?.trend ?? "Mixed Signal",
     addedDate: new Date().toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -70,6 +69,48 @@ export const useWatchlistStore = create<WatchlistState>()(
       hasStock: (ticker) =>
         get().stocks.some((s) => s.ticker === ticker.toUpperCase()),
       isAtLimit: () => get().stocks.length >= WATCHLIST_MAX_STOCKS,
+      refreshPrices: async () => {
+        const tickers = get().stocks.map((s) => s.ticker);
+        if (tickers.length === 0) return;
+
+        try {
+          const res = await fetch(
+            `/api/market/quotes?symbols=${encodeURIComponent(tickers.join(","))}`,
+          );
+          if (!res.ok) return;
+          const body = (await res.json()) as {
+            quotes?: Record<
+              string,
+              {
+                lastClose: string;
+                dailyChange: string;
+                direction?: "up" | "down" | "flat";
+                positive: boolean;
+              }
+            >;
+          };
+          const quotes = body.quotes;
+          if (!quotes) return;
+
+          set((state) => ({
+            stocks: state.stocks.map((stock) => {
+              const q = quotes[stock.ticker];
+              if (!q) return stock;
+              const direction =
+                q.direction ??
+                (q.positive ? "up" : q.dailyChange === "0.0%" ? "flat" : "down");
+              return {
+                ...stock,
+                price: q.lastClose,
+                change: q.dailyChange,
+                positive: direction === "up",
+              };
+            }),
+          }));
+        } catch {
+          /* keep cached values */
+        }
+      },
     }),
     {
       name: "stocklens-watchlist",

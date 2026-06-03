@@ -6,6 +6,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -49,12 +50,9 @@ const pageContainer = "container mx-auto w-full max-w-7xl px-4 md:px-8";
 export default function LandingPage() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-background to-muted/20">
-      <header className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="w-full border-b border-brand-accent/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className={`${pageContainer} flex h-16 items-center`}>
-          <Link href="/" className="flex items-center gap-2">
-            <TrendingUp className="h-6 w-6 text-primary" />
-            <span className="text-xl font-semibold">StockLens PH</span>
-          </Link>
+          <BrandLogo className="text-xl" markSize={32} />
           <nav className="ml-auto flex gap-4">
             <Link href="/dashboard">
               <Button variant="ghost">Dashboard</Button>
@@ -67,14 +65,15 @@ export default function LandingPage() {
         <section className={`${pageContainer} py-20 md:py-32`}>
           <div className="mx-auto max-w-3xl space-y-6 text-center">
             <h1 className="font-sans text-4xl font-bold tracking-tight md:text-6xl">
-              StockLens PH
+              StockLens{" "}
+              <span className="text-brand-accent">PH</span>
             </h1>
             <p className="text-xl text-muted-foreground md:text-2xl">
               Explore Philippine stock trends with AI-assisted forecasting and
               model comparison.
             </p>
             <p className="text-sm font-medium text-muted-foreground">
-              30 PSE blue-chip tickers · 7-day experimental forecasts
+              Full PSE equity directory · demo forecasts on select blue chips
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
               <Link href="/dashboard">

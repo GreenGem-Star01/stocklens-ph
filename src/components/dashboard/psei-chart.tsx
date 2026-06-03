@@ -11,7 +11,6 @@ import {
   YAxis,
 } from "recharts";
 
-import { ChartTooltip } from "@/components/charts/chart-tooltip";
 import {
   Card,
   CardContent,
@@ -20,11 +19,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { pseiData as defaultPseiData } from "@/lib/data/dashboard";
+import { pseiYAxisDomain } from "@/lib/market/psei-chart";
 import type { PseiDataPoint } from "@/lib/types/stock";
 
 export function PseiChart({ data = defaultPseiData }: { data?: PseiDataPoint[] }) {
   const mounted = useIsClient();
   const chartData = data.map((d) => ({ date: d.date, price: d.value }));
+  const yDomain = pseiYAxisDomain(chartData.map((d) => d.price));
 
   return (
     <Card>
@@ -38,8 +39,16 @@ export function PseiChart({ data = defaultPseiData }: { data?: PseiDataPoint[] }
           role="img"
           aria-label="PSEi index line chart for the last eight trading days"
         >
-          {mounted ? (
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          {chartData.length === 0 ? (
+            <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              No index history yet. Run{" "}
+              <code className="mx-1 rounded bg-muted px-1.5 py-0.5 text-xs">
+                npm run ingest:bars
+              </code>{" "}
+              to load daily bars.
+            </p>
+          ) : mounted ? (
+            <ResponsiveContainer width="100%" height={288} minWidth={0} minHeight={200}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis
@@ -49,12 +58,15 @@ export function PseiChart({ data = defaultPseiData }: { data?: PseiDataPoint[] }
                   axisLine={false}
                 />
                 <YAxis
-                  domain={[6400, 6500]}
+                  domain={yDomain}
                   tick={{ fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
+                  tickFormatter={(v) =>
+                    Number(v).toLocaleString("en-PH", { maximumFractionDigits: 0 })
+                  }
                 />
-                <Tooltip content={<ChartTooltip />} />
+                <Tooltip content={<PseiChartTooltip />} />
                 <Line
                   type="monotone"
                   dataKey="price"
@@ -71,6 +83,28 @@ export function PseiChart({ data = defaultPseiData }: { data?: PseiDataPoint[] }
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function PseiChartTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ value?: number | null; payload?: { date?: string } }>;
+}) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload;
+  const value = payload[0]?.value;
+  if (value == null) return null;
+
+  return (
+    <div className="rounded-lg border bg-popover px-3 py-2 text-sm shadow-md">
+      <p className="font-medium">{point?.date}</p>
+      <p className="tabular-nums text-muted-foreground">
+        {value.toLocaleString("en-PH", { maximumFractionDigits: 2 })} pts
+      </p>
+    </div>
   );
 }
 

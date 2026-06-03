@@ -1,0 +1,21 @@
+# Optional: SSH tunnel to Postgres when the VM cannot reach Supabase directly.
+# Copy to /etc/systemd/system/stocklens-tunnel.service and edit User, SSH target, ports.
+#
+# sudo systemctl daemon-reload
+# sudo systemctl enable --now stocklens-tunnel
+
+[Unit]
+Description=SSH tunnel to StockLens Postgres
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+ExecStart=/usr/bin/ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=60 \
+  -L 5433:db.YOUR_PROJECT.supabase.co:5432 deploy@YOUR_JUMP_HOST
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

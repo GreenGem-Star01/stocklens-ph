@@ -50,7 +50,7 @@ export async function GET(request: Request) {
           horizon: horizonParam ?? undefined,
           model: modelParam ?? undefined,
         })
-      : getForecastsData();
+      : await getForecastsData();
 
   return NextResponse.json(
     {

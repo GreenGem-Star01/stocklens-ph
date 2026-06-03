@@ -51,6 +51,7 @@ export function StockHeader({ analysis }: { analysis: StockAnalysis }) {
               {info.ticker}
             </span>
             <Badge variant="outline">{info.sector}</Badge>
+            <Badge variant="secondary">{info.subsector}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             Last updated: {lastUpdated}

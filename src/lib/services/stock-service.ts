@@ -1,8 +1,12 @@
-import { getStockAnalysisData, getStockHistoryData } from "@/lib/api/market-provider";
+import {
+  getStockAnalysisData,
+  getStockHistoryData,
+} from "@/lib/api/market-provider";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
+import type { BarRange } from "@/lib/market/types";
 
 export async function getStockAnalysis(ticker: string): Promise<StockAnalysis> {
-  const data = getStockAnalysisData(ticker);
+  const data = await getStockAnalysisData(ticker);
   if (!data) {
     throw new Error(`Unknown ticker: ${ticker}`);
   }
@@ -11,9 +15,9 @@ export async function getStockAnalysis(ticker: string): Promise<StockAnalysis> {
 
 export async function getStockHistory(
   ticker: string,
-  range = "30d",
+  range: BarRange = "30d",
 ): Promise<StockAnalysis["chartData"]> {
-  const points = getStockHistoryData(ticker, range);
+  const points = await getStockHistoryData(ticker, range);
   if (!points) {
     throw new Error(`Unknown ticker: ${ticker}`);
   }

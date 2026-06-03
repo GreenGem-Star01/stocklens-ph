@@ -16,7 +16,8 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.json(getMarketOverviewData(), {
+  const data = await getMarketOverviewData();
+  return NextResponse.json(data, {
     headers: rateLimitHeaders(limit),
   });
 }

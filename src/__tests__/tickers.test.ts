@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  BLUE_CHIP_TICKERS,
+  LISTED_EQUITY_TICKERS,
   resolveTickerFromInput,
   SUPPORTED_TICKERS,
   TICKER_PATHS,
@@ -31,10 +31,9 @@ describe("ticker registry", () => {
     expect(TICKER_PATHS.has("invalid")).toBe(false);
   });
 
-  it("includes 30 blue chips plus PSEi index", () => {
-    expect(BLUE_CHIP_TICKERS).toHaveLength(30);
-    expect(SUPPORTED_TICKERS).toHaveLength(31);
-    expect(resolveTickerFromInput("SM.PS")?.ticker).toBe("SM.PS");
-    expect(resolveTickerFromInput("mbt")?.ticker).toBe("MBT.PS");
+  it("includes full PSE equity list plus index", () => {
+    expect(LISTED_EQUITY_TICKERS.length).toBeGreaterThanOrEqual(200);
+    expect(SUPPORTED_TICKERS.length).toBeGreaterThan(LISTED_EQUITY_TICKERS.length);
+    expect(resolveTickerFromInput("AAA")?.ticker).toBe("AAA.PS");
   });
 });

@@ -1,0 +1,38 @@
+// StockLens PH market data — mirrors db/migrations/001_market_tables.sql
+// Connection URLs: prisma.config.ts (Prisma 7)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model MarketQuoteLatest {
+  symbol    String   @id
+  lastClose Decimal  @map("last_close") @db.Decimal(18, 6)
+  changePct Decimal  @default(0) @map("change_pct") @db.Decimal(10, 4)
+  changeAbs Decimal? @map("change_abs") @db.Decimal(18, 6)
+  volume    BigInt?
+  asOf      DateTime @default(now()) @map("as_of") @db.Timestamptz(6)
+  source    String   @default("dss")
+
+  @@index([asOf(sort: Desc)], map: "market_quotes_latest_as_of_idx")
+  @@map("market_quotes_latest")
+}
+
+model MarketBarDaily {
+  symbol    String
+  tradeDate DateTime @map("trade_date") @db.Date
+  open      Decimal  @db.Decimal(18, 6)
+  high      Decimal  @db.Decimal(18, 6)
+  low       Decimal  @db.Decimal(18, 6)
+  close     Decimal  @db.Decimal(18, 6)
+  volume    BigInt?
+
+  @@id([symbol, tradeDate])
+  @@index([symbol, tradeDate(sort: Desc)], map: "market_bars_daily_symbol_date_idx")
+  @@map("market_bars_daily")
+}

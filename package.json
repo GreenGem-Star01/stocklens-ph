@@ -9,16 +9,31 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "sync:pse": "tsx scripts/sync-pse-universe.ts",
+    "ingest:quotes": "tsx scripts/ingest-market-quotes.ts",
+    "ingest:quotes:snapshot": "tsx scripts/ingest-market-quotes.ts -- --write-snapshot",
+    "ingest:bars": "tsx scripts/ingest-market-bars.ts",
+    "setup:market-data": "tsx scripts/ingest-market-quotes.ts -- --write-snapshot",
+    "validate:data": "tsx scripts/validate-pse-universe.ts",
+    "health:market": "tsx scripts/health-market.ts",
+    "setup:dss": "tsx scripts/setup-dss-ingest.ts",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio",
+    "prisma:validate": "prisma validate"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@prisma/client": "^7.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
+    "pg": "^8.20.0",
+    "prisma": "^7.8.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
@@ -30,10 +45,12 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "dotenv": "^17.2.1",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.2",
@@ -41,6 +58,7 @@
     "eslint-config-next": "16.2.6",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",
+    "tsx": "^4.22.3",
     "typescript": "^5",
     "vitest": "^4.1.6"
   }

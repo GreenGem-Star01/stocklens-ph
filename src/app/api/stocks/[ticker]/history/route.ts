@@ -39,7 +39,7 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Ticker not found" }, { status: 404 });
   }
 
-  const points = getStockHistoryData(symbol, rangeResult.data);
+  const points = await getStockHistoryData(symbol, rangeResult.data);
   if (!points) {
     return NextResponse.json({ error: "Ticker not found" }, { status: 404 });
   }

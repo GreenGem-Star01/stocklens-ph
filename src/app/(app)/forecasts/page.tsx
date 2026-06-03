@@ -19,6 +19,7 @@ export default function ForecastsPage() {
           >
             Looking for a ticker? Browse all stocks
           </Link>
+          . Forecasts below cover the demo blue-chip subset only.
         </p>
       </div>
       <ForecastsSummary />

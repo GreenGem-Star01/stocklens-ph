@@ -82,7 +82,7 @@ export const TickerCombobox = forwardRef<HTMLButtonElement, TickerComboboxProps>
                 {SUPPORTED_TICKERS.map((entry) => (
                   <CommandItem
                     key={entry.ticker}
-                    value={`${entry.ticker} ${entry.name} ${entry.sector}`}
+                    value={`${entry.ticker} ${entry.name} ${entry.sector} ${entry.subsector}`}
                     onSelect={() => {
                       onSelect(entry.ticker);
                       setOpen(false);
@@ -97,7 +97,7 @@ export const TickerCombobox = forwardRef<HTMLButtonElement, TickerComboboxProps>
                     <div className="flex flex-col">
                       <span className="font-medium">{entry.ticker}</span>
                       <span className="text-xs text-muted-foreground">
-                        {entry.name} · {entry.sector}
+                        {entry.name} · {entry.sector} · {entry.subsector}
                       </span>
                     </div>
                   </CommandItem>

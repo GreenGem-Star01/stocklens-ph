@@ -16,9 +16,9 @@ describe("stock catalog", () => {
     }
   });
 
-  it("includes newly added tickers", () => {
-    expect(getStockAnalysisStatic("SM.PS")?.info.sector).toBe("Conglomerate");
+  it("uses official PSE sectors for analyzed tickers", () => {
+    expect(getStockAnalysisStatic("SM.PS")?.info.sector).toBe("Holding Firms");
     expect(getStockAnalysisStatic("MBT.PS")?.info.sector).toBe("Financials");
-    expect(getStockAnalysisStatic("FGEN.PS")?.info.sector).toBe("Energy");
+    expect(getStockAnalysisStatic("FGEN.PS")?.info.sector).toBe("Industrial");
   });
 });

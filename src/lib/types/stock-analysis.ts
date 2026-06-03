@@ -4,6 +4,7 @@ export type StockInfo = {
   name: string;
   ticker: string;
   sector: string;
+  subsector: string;
 };
 
 export type StockMetrics = {

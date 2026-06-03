@@ -14,10 +14,12 @@ import {
 
 import { ChartLegend } from "@/components/charts/chart-legend";
 import { ChartTooltip } from "@/components/charts/chart-tooltip";
+import { formatStockChartTick } from "@/lib/market/chart-domain";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
 
 export function StockForecastChart({ analysis }: { analysis: StockAnalysis }) {
   const mounted = useIsClient();
+  const isIndex = analysis.info.sector === "Index";
 
   if (!mounted) {
     return (
@@ -32,7 +34,7 @@ export function StockForecastChart({ analysis }: { analysis: StockAnalysis }) {
       aria-label={`Price chart for ${analysis.info.ticker} with historical and forecast lines`}
     >
       <ChartLegend />
-      <ResponsiveContainer width="100%" height="92%" minWidth={0}>
+      <ResponsiveContainer width="100%" height={460} minWidth={0} minHeight={320}>
         <LineChart data={analysis.chartData}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
@@ -41,6 +43,8 @@ export function StockForecastChart({ analysis }: { analysis: StockAnalysis }) {
             tick={{ fontSize: 12 }}
             tickLine={false}
             axisLine={false}
+            allowDecimals={!isIndex}
+            tickFormatter={(v) => formatStockChartTick(Number(v), { isIndex })}
           />
           <Tooltip content={<ChartTooltip />} />
           <ReferenceLine

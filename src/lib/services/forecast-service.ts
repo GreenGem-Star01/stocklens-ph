@@ -1,4 +1,7 @@
-import { getForecastsData, getStockAnalysisData } from "@/lib/api/market-provider";
+import {
+  getForecastsData,
+  getStockAnalysisData,
+} from "@/lib/api/market-provider";
 import type { StockForecast } from "@/lib/data/forecasts";
 import type { ForecastTrend } from "@/lib/types/stock";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
@@ -11,7 +14,9 @@ export type ForecastQuery = {
 
 export type ForecastResponse = {
   forecasts: StockForecast[];
-  modelPerformance: ReturnType<typeof getForecastsData>["modelPerformance"];
+  modelPerformance: Awaited<
+    ReturnType<typeof getForecastsData>
+  >["modelPerformance"];
 };
 
 function trendFromPrices(last: number, target: number): ForecastTrend {
@@ -49,12 +54,12 @@ export function buildForecastFromAnalysis(
 export async function getForecasts(
   query: ForecastQuery = {},
 ): Promise<ForecastResponse> {
-  const base = getForecastsData();
+  const base = await getForecastsData();
   let items = base.forecasts;
 
   if (query.ticker) {
     const symbol = query.ticker.toUpperCase();
-    const analysis = getStockAnalysisData(symbol);
+    const analysis = await getStockAnalysisData(symbol);
     if (analysis && query.model) {
       items = [buildForecastFromAnalysis(analysis, query.model)];
     } else {

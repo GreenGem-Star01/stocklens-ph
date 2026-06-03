@@ -10,6 +10,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { buttonVariants } from "@/components/ui/button";
 import { isNavItemActive } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -28,10 +29,7 @@ export function AppSidebar() {
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r bg-card md:flex">
       <div className="flex h-16 items-center border-b px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <TrendingUp className="h-6 w-6 text-primary" />
-          <span className="text-lg font-semibold">StockLens PH</span>
-        </Link>
+        <BrandLogo markSize={28} />
       </div>
       <nav className="space-y-1 p-4">
         {navItems.map(({ href, label, icon: Icon }) => {

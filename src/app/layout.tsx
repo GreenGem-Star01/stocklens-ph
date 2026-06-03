@@ -3,6 +3,11 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppProviders } from "@/components/providers/app-providers";
 import { ThemeInitScript } from "@/components/providers/theme-init-script";
+import {
+  BRAND_DISCLAIMER,
+  BRAND_FULL_NAME,
+  BRAND_TAGLINE,
+} from "@/lib/constants/brand";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,10 +20,32 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
-  title: "StockLens PH | Financial Analytics Dashboard",
-  description:
-    "Philippine stock analytics dashboard with experimental forecasts for educational purposes.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: `${BRAND_FULL_NAME} | Financial Analytics Dashboard`,
+    template: `%s | ${BRAND_FULL_NAME}`,
+  },
+  description: `${BRAND_TAGLINE} ${BRAND_DISCLAIMER}`,
+  applicationName: BRAND_FULL_NAME,
+  openGraph: {
+    title: BRAND_FULL_NAME,
+    description: BRAND_TAGLINE,
+    siteName: BRAND_FULL_NAME,
+    type: "website",
+    locale: "en_PH",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: BRAND_FULL_NAME,
+    description: BRAND_TAGLINE,
+  },
 };
 
 export default function RootLayout({
