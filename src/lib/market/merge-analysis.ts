@@ -26,7 +26,9 @@ function formatBarDateOffset(isoDate: string, dayOffset: number): string {
 }
 
 function chartValuesFromPoints(points: ChartPoint[]): number[] {
-  return points.flatMap((p) => [p.price, p.forecast]);
+  return points.flatMap((p) => [p.price, p.forecast]).filter(
+    (v): v is number => v != null && Number.isFinite(v),
+  );
 }
 
 function chartDomainFromPoints(
