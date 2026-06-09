@@ -89,9 +89,12 @@ For DSS VM database access, use an SSH tunnel before setting `DATABASE_URL`.
 
 ### Market data ingest (batch)
 
+Step-by-step ingest and update schedule: [`db/INGEST.md`](db/INGEST.md).
+
 ```bash
 npm run ingest:quotes      # full listing + PSEi → Postgres
-npm run ingest:bars        # OHLCV for analyzed tickers (~31) → Postgres
+npm run ingest:bars        # OHLCV for all listed equities + PSEI → Postgres
+npm run ingest:forecasts   # baseline forecasts + backtest metrics → Postgres
 npm run ingest:quotes:snapshot   # also write data/market-quotes-snapshot.json
 ```
 
@@ -101,7 +104,7 @@ Sources: **PSE EDGE** (default). Fallback: `npm run ingest:quotes -- --source=ya
 
 | Schedule (Manila) | Command |
 |-------------------|---------|
-| Mon–Fri ~18:00 | `db/cron.example.sh` or `ingest:quotes` then `ingest:bars` |
+| Mon–Fri ~18:00 | `db/cron.example.sh` or quotes → bars → forecasts |
 | Sunday 06:00 | `npm run sync:pse` → commit JSON if listings changed |
 
 **Health checks** (Supabase SQL):
@@ -133,15 +136,17 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) uses `MARKET_DATA_SO
 
 Footer copy: **~283 listed equities** in the directory plus index/ETF rows; **PSEi** is a separate index line. PSEi EOD comes from [PSE EDGE Index Summary](https://edge.pse.com.ph/index/form.do) during ingest.
 
-## Forecast ML service
+## Forecast engine
 
-Python scaffold in `services/forecast/` for LSTM + baseline training. Not wired to the app UI in this phase; `FORECAST_DATA_SOURCE=db` is future work.
+- **Baselines (TypeScript):** `src/lib/forecast/` — naive, MA, linear with walk-forward MAE/RMSE/MAPE
+- **Batch ingest:** `npm run ingest:forecasts` writes `market_forecasts_latest` + `market_model_metrics`
+- **LSTM (optional):** `npm run ingest:forecasts:lstm` calls `services/forecast/forecast/lstm.py`
+
+MVP checklist: [`docs/MVP.md`](docs/MVP.md).
 
 ```bash
 cd services/forecast
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python -m forecast.run --tickers BDO.PS JFC.PS
+python3 -m forecast.lstm --closes '[100,101,102,103]' --horizon 7
 ```
 
 ## Scripts
@@ -154,7 +159,10 @@ python -m forecast.run --tickers BDO.PS JFC.PS
 | `npm run test` | Vitest unit tests |
 | `npm run sync:pse` | Refresh `data/pse-official-universe.json` from PSE EDGE |
 | `npm run ingest:quotes` | Batch EOD quotes → Postgres (+ optional snapshot) |
-| `npm run ingest:bars` | Daily OHLCV for analyzed tickers → Postgres (exits 1 if PSEI or any seed has 0 bars) |
+| `npm run ingest:bars` | Daily OHLCV for all listed equities → Postgres (exits 1 if PSEI missing) |
+| `npm run ingest:forecasts` | Baseline forecasts + metrics → Postgres |
+| `npm run ingest:forecasts:snapshot` | Forecasts ingest + `data/market-forecasts-snapshot.json` |
+| `npm run ingest:forecasts:lstm` | Optional LSTM forecasts via Python |
 | `npm run ingest:quotes:snapshot` | Quotes ingest + write snapshot file |
 | `npm run setup:market-data` | Same as snapshot ingest (static/Vercel refresh) |
 | `npm run validate:data` | Validate universe JSON (+ snapshot) for CI |

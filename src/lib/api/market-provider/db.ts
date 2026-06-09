@@ -4,33 +4,43 @@ import {
   pseiData,
   recentAnalysis as staticRecent,
 } from "@/lib/data/dashboard";
-import {
-  allForecasts,
-  forecastSummary,
-  modelPerformance,
-} from "@/lib/data/forecasts";
+import { buildMarketAnalysis } from "@/lib/data/build-market-analysis";
 import { TICKER_BY_SYMBOL } from "@/lib/constants/tickers";
-import { isAnalyzedTicker } from "@/lib/pse/universe";
 import type { MarketProvider } from "@/lib/api/market-provider/types";
 import { getDailyBars } from "@/lib/market/bars-repository";
 import { buildPseiChartFromMarket, mergePseiQuoteIntoChartPoints } from "@/lib/market/psei-chart";
 import {
   formatAsOf,
   formatChangePct,
+  formatPriceAmount,
   isQuoteStale,
   quoteToDisplay,
 } from "@/lib/market/format-quote";
 import { applyMarketSession } from "@/lib/market/pse-session";
-import { mergeAnalysisWithMarketData } from "@/lib/market/merge-analysis";
 import { getLatestQuotes, getQuotesAsOf } from "@/lib/market/quotes-repository";
+import { fetchAllForecastSymbols, fetchModelMetrics } from "@/lib/market/forecasts-repository";
 import { symbolToTicker, tickerToSymbol } from "@/lib/market/symbol";
-import type { BarRange } from "@/lib/market/types";
+import type { BarRange, MarketBar } from "@/lib/market/types";
 import type { FeaturedStock, RecentAnalysisRow } from "@/lib/types/stock";
+import { getPseCompanyByTicker } from "@/lib/pse/universe";
 
 function normalizeTicker(ticker: string): string {
   return ticker.toUpperCase().includes(".PS")
     ? ticker.toUpperCase()
     : `${ticker.toUpperCase()}.PS`;
+}
+
+function formatBarDate(isoDate: string): string {
+  const d = new Date(`${isoDate}T12:00:00`);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function barsToChartPoints(bars: MarketBar[]) {
+  return bars.map((bar) => ({
+    date: formatBarDate(bar.tradeDate),
+    price: Number(bar.close),
+    forecast: null,
+  }));
 }
 
 function buildFeaturedFromQuotes(
@@ -118,27 +128,25 @@ export const dbMarketProvider: MarketProvider = {
   async getStockAnalysis(ticker) {
     const normalized = normalizeTicker(ticker);
     if (!TICKER_BY_SYMBOL[normalized]) return null;
-    if (!isAnalyzedTicker(normalized)) return null;
+    if (!getPseCompanyByTicker(normalized)) return null;
 
     const symbol = tickerToSymbol(normalized);
     const quotes = await getLatestQuotes([normalized]);
     const quote = quotes.get(symbol);
-    const bars = await getDailyBars(normalized, "90d");
-    return mergeAnalysisWithMarketData(normalized, quote, bars);
+    const bars = await getDailyBars(normalized, "1y");
+
+    return buildMarketAnalysis(normalized, quote, bars);
   },
 
   async getStockHistory(ticker, range) {
     const normalized = normalizeTicker(ticker);
-    if (!isAnalyzedTicker(normalized)) return null;
+    if (!getPseCompanyByTicker(normalized)) return null;
 
     const bars = await getDailyBars(normalized, range);
     if (bars.length > 0) {
-      const analysis = await this.getStockAnalysis(normalized);
-      return analysis?.chartData ?? null;
+      return barsToChartPoints(bars);
     }
-
-    const analysis = await this.getStockAnalysis(normalized);
-    return analysis?.chartData ?? null;
+    return [];
   },
 
   async getMarketOverview() {
@@ -167,10 +175,44 @@ export const dbMarketProvider: MarketProvider = {
   },
 
   async getForecastsData() {
+    const symbols = await fetchAllForecastSymbols();
+    const quotes = await getLatestQuotes();
+
+    const forecasts = await Promise.all(
+      symbols.slice(0, 100).map(async (symbol) => {
+        const ticker = symbolToTicker(symbol);
+        const company = getPseCompanyByTicker(ticker);
+        const quote = quotes.get(symbol);
+        const metrics = await fetchModelMetrics(ticker, 7);
+        const best = metrics[0];
+        const price = quote
+          ? formatPriceAmount(quote.lastClose)
+          : "—";
+
+        return {
+          ticker,
+          company: company?.companyName ?? symbol,
+          sector: company?.sector ?? "Equity",
+          currentPrice: price,
+          forecast7d: "—",
+          trend: "Mixed Signal" as const,
+          accuracy: best?.dirAccuracy != null ? `${best.dirAccuracy.toFixed(1)}%` : "—",
+          date: new Date().toISOString().slice(0, 10),
+          expectedChange: quote ? formatChangePct(quote.changePct) : "—",
+        };
+      }),
+    );
+
     return {
-      forecasts: allForecasts,
-      modelPerformance,
-      summary: forecastSummary,
+      forecasts,
+      modelPerformance: [],
+      summary: {
+        totalToday: forecasts.length,
+        lastUpdated: new Date().toISOString().slice(0, 10),
+        averageAccuracy: "—",
+        upwardCount: 0,
+        upwardPercent: "0%",
+      },
     };
   },
 };

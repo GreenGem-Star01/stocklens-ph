@@ -59,5 +59,6 @@ fi
 log "Starting EOD ingest (cwd=$ROOT)"
 npm run ingest:quotes
 npm run ingest:bars
+npm run ingest:forecasts
 npm run health:market
 log "EOD ingest finished OK"

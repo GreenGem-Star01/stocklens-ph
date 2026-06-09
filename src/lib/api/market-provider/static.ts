@@ -9,7 +9,9 @@ import {
   forecastSummary,
   modelPerformance,
 } from "@/lib/data/forecasts";
-import { getStockAnalysisStatic } from "@/lib/data/stocks";
+import { buildMarketAnalysis } from "@/lib/data/build-market-analysis";
+import { getAllForecastsFromSnapshot } from "@/lib/market/forecasts-snapshot";
+import { getPseCompanyByTicker } from "@/lib/pse/universe";
 import { TICKER_BY_SYMBOL } from "@/lib/constants/tickers";
 import type { MarketProvider } from "@/lib/api/market-provider/types";
 import {
@@ -134,7 +136,11 @@ export const staticMarketProvider: MarketProvider = {
   async getStockAnalysis(ticker: string) {
     const normalized = normalizeTicker(ticker);
     if (!TICKER_BY_SYMBOL[normalized]) return null;
-    return getStockAnalysisStatic(normalized) ?? null;
+    if (!getPseCompanyByTicker(normalized)) return null;
+
+    const quotes = snapshotQuotes([normalized]);
+    const quote = quotes.get(tickerToSymbol(normalized));
+    return buildMarketAnalysis(normalized, quote, []);
   },
 
   async getStockHistory(ticker: string, range: BarRange) {
@@ -172,10 +178,42 @@ export const staticMarketProvider: MarketProvider = {
   },
 
   async getForecastsData() {
+    const snapRows = getAllForecastsFromSnapshot();
+    if (snapRows.length === 0) {
+      return {
+        forecasts: allForecasts,
+        modelPerformance,
+        summary: forecastSummary,
+      };
+    }
+
+    const quotes = snapshotQuotes();
+    const forecasts = snapRows
+      .filter((r) => r.horizonDays === 7 && r.model === "linear")
+      .map((row) => {
+        const ticker = symbolToTicker(row.symbol);
+        const company = getPseCompanyByTicker(ticker);
+        const quote = quotes.get(row.symbol);
+        const lastForecast = [...row.points].reverse().find((p) => p.forecast != null);
+        return {
+          ticker,
+          company: company?.companyName ?? row.symbol,
+          sector: company?.sector ?? "Equity",
+          currentPrice: quote ? String(quote.lastClose) : "—",
+          forecast7d: lastForecast?.forecast != null ? String(lastForecast.forecast) : "—",
+          trend: "Mixed Signal" as const,
+          accuracy: "—",
+          date: row.generatedAt.slice(0, 10),
+        };
+      });
+
     return {
-      forecasts: allForecasts,
+      forecasts,
       modelPerformance,
-      summary: forecastSummary,
+      summary: {
+        ...forecastSummary,
+        totalToday: forecasts.length,
+      },
     };
   },
 };

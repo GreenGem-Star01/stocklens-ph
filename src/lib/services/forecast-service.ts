@@ -28,9 +28,9 @@ function trendFromPrices(last: number, target: number): ForecastTrend {
 
 export function buildForecastFromAnalysis(
   analysis: StockAnalysis,
-  _model = "lstm",
+  model = "linear",
 ): StockForecast {
-  void _model;
+  void model;
   const lastPoint = [...analysis.chartData]
     .reverse()
     .find((p) => p.price != null);

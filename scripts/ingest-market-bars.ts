@@ -1,17 +1,15 @@
 /**
- * Daily OHLCV ingest for analyzed tickers → market_bars_daily
+ * Daily OHLCV ingest for all listed tickers → market_bars_daily
  * Run: npm run ingest:bars
- * Flags: --verbose (per-symbol diagnostics), --probe=BDO (fetch one symbol only)
- *
- * PSEi: Yahoo chart API. Equities: Yahoo often empty (.PS = indices only on Yahoo);
- * falls back to PSE EDGE DisclosureCht.ax historical OHLCV.
+ * Flags: --verbose, --probe=BDO, --concurrency=3
  */
 import "dotenv/config";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { ALL_STOCK_SEEDS } from "../src/lib/data/stock-seeds";
 import { closeIngestPool, getIngestPool } from "./lib/db-ingest";
 import { assertValidDatabaseUrl, loadMarketEnv } from "./lib/load-market-env";
+import {
+  loadCompanyIdBySymbol,
+  loadIngestSymbols,
+} from "./lib/universe-symbols";
 import {
   fetchPseEdgeHistoricalBars,
   fetchPseEdgeSecurityId,
@@ -20,31 +18,18 @@ import { fetchYahooDailyBars } from "./market/yahoo-eod";
 
 const RANGE_DAYS = 400;
 const DELAY_MS = 700;
-
-type UniverseCompany = {
-  symbol: string;
-  companyId?: string;
-};
-
-function loadCompanyIdBySymbol(): Map<string, string> {
-  const path = join(process.cwd(), "data/pse-official-universe.json");
-  const raw = JSON.parse(readFileSync(path, "utf8")) as {
-    companies?: UniverseCompany[];
-    indices?: UniverseCompany[];
-  };
-  const map = new Map<string, string>();
-  for (const row of [...(raw.companies ?? []), ...(raw.indices ?? [])]) {
-    if (row.companyId) {
-      map.set(row.symbol.toUpperCase(), row.companyId);
-    }
-  }
-  return map;
-}
+const MIN_EQUITY_SYMBOLS_WARN = 250;
 
 function parseProbeSymbol(): string | null {
   const arg = process.argv.find((a) => a.startsWith("--probe="));
   if (!arg) return null;
   return arg.split("=")[1]?.trim().toUpperCase() ?? null;
+}
+
+function parseConcurrency(): number {
+  const arg = process.argv.find((a) => a.startsWith("--concurrency="));
+  const n = arg ? Number(arg.split("=")[1]) : 1;
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, 5) : 1;
 }
 
 async function upsertBars(
@@ -78,12 +63,6 @@ async function upsertBars(
   }
 
   return written;
-}
-
-function orderSymbols(symbols: string[]): string[] {
-  const psei = symbols.filter((s) => s === "PSEI");
-  const rest = symbols.filter((s) => s !== "PSEI");
-  return [...psei, ...rest];
 }
 
 async function fetchBarsForSymbol(
@@ -135,40 +114,55 @@ async function fetchBarsForSymbol(
   return { bars, source: bars.length > 0 ? "edge" : "none" };
 }
 
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]!, i);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+  return results;
+}
+
 async function main(): Promise<void> {
   loadMarketEnv();
   assertValidDatabaseUrl();
 
   const verbose = process.argv.includes("--verbose");
   const probe = parseProbeSymbol();
+  const concurrency = parseConcurrency();
   const companyIds = loadCompanyIdBySymbol();
 
-  const allSymbols = ALL_STOCK_SEEDS.map((s) =>
-    s.ticker.replace(/\.PS$/i, ""),
-  );
+  const allSymbols = loadIngestSymbols();
   const symbols = probe
     ? allSymbols.filter((s) => s === probe || s === probe.replace(/\.PS$/i, ""))
-    : orderSymbols(allSymbols);
+    : allSymbols;
 
   if (probe && symbols.length === 0) {
-    throw new Error(`--probe=${probe} not in analyzed seed list`);
+    throw new Error(`--probe=${probe} not in PSE universe`);
   }
 
   console.log(
-    `Fetching ${RANGE_DAYS}d bars for ${symbols.length} symbol(s) (delay ${DELAY_MS}ms)...`,
+    `Fetching ${RANGE_DAYS}d bars for ${symbols.length} symbol(s) (delay ${DELAY_MS}ms, concurrency ${concurrency})...`,
   );
 
   const barsPerSymbol = new Map<string, number>();
   const sourcePerSymbol = new Map<string, string>();
   let totalBars = 0;
 
-  for (let i = 0; i < symbols.length; i++) {
-    const symbol = symbols[i]!;
-    const { bars, source } = await fetchBarsForSymbol(
-      symbol,
-      companyIds,
-      verbose,
-    );
+  await mapPool(symbols, concurrency, async (symbol, i) => {
+    const { bars, source } = await fetchBarsForSymbol(symbol, companyIds, verbose);
     const written = await upsertBars(bars);
     barsPerSymbol.set(symbol, written);
     sourcePerSymbol.set(symbol, source);
@@ -176,7 +170,7 @@ async function main(): Promise<void> {
     console.log(
       `  ${symbol}: ${written} bars (${source}) (${i + 1}/${symbols.length})`,
     );
-  }
+  });
 
   console.log(`Done. Upserted ${totalBars} bar rows.`);
 
@@ -194,20 +188,26 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  const equityWithBars = symbols.filter(
+    (s) => s !== "PSEI" && (barsPerSymbol.get(s) ?? 0) > 0,
+  ).length;
+  if (equityWithBars < MIN_EQUITY_SYMBOLS_WARN) {
+    console.warn(
+      `WARN: only ${equityWithBars} equities have bars (expected ~${MIN_EQUITY_SYMBOLS_WARN}+).`,
+    );
+  }
+
   const equityMissing = symbols.filter(
     (s) => s !== "PSEI" && (barsPerSymbol.get(s) ?? 0) === 0,
   );
-  if (equityMissing.length > 0) {
-    console.warn(
-      `No bars for: ${equityMissing.join(", ")}. Stock pages use seed chart fallback.`,
-    );
-    console.warn("Retry: npm run ingest:bars -- --verbose");
+  if (equityMissing.length > 0 && equityMissing.length <= 20) {
+    console.warn(`No bars for: ${equityMissing.join(", ")}`);
+  } else if (equityMissing.length > 20) {
+    console.warn(`No bars for ${equityMissing.length} symbols (use --verbose for details)`);
   }
 
-  const edgeCount = [...sourcePerSymbol.values()].filter((s) => s === "edge")
-    .length;
-  const yahooCount = [...sourcePerSymbol.values()].filter((s) => s === "yahoo")
-    .length;
+  const edgeCount = [...sourcePerSymbol.values()].filter((s) => s === "edge").length;
+  const yahooCount = [...sourcePerSymbol.values()].filter((s) => s === "yahoo").length;
   console.log(`Sources: ${yahooCount} yahoo, ${edgeCount} edge`);
 
   await closeIngestPool();

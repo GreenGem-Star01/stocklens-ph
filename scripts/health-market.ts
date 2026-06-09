@@ -10,6 +10,8 @@ import {
 } from "./lib/load-market-env";
 
 const MIN_QUOTES = 200;
+const MIN_EQUITY_SYMBOLS_WARN = 250;
+const MIN_FORECAST_SYMBOLS_WARN = 50;
 
 async function main(): Promise<void> {
   loadMarketEnv();
@@ -37,8 +39,21 @@ async function main(): Promise<void> {
     const pseiBars = Number(pseiRow.rows[0]?.bars ?? 0);
     const latestBar = pseiRow.rows[0]?.latest_bar;
 
+    const equitySymbols = await pool.query<{ count: string }>(
+      `SELECT COUNT(DISTINCT symbol)::text AS count
+       FROM market_bars_daily WHERE symbol <> 'PSEI'`,
+    );
+    const equitySymbolCount = Number(equitySymbols.rows[0]?.count ?? 0);
+
     console.log(`Quotes: ${quoteCount} rows, latest as_of: ${latestAsOf ?? "none"}`);
     console.log(`PSEI bars: ${pseiBars} rows, latest trade_date: ${latestBar ?? "none"}`);
+    const forecastSymbols = await pool.query<{ count: string }>(
+      `SELECT COUNT(DISTINCT symbol)::text AS count FROM market_forecasts_latest`,
+    );
+    const forecastSymbolCount = Number(forecastSymbols.rows[0]?.count ?? 0);
+
+    console.log(`Equity symbols with bars: ${equitySymbolCount}`);
+    console.log(`Symbols with forecasts: ${forecastSymbolCount}`);
 
     let failed = false;
     if (quoteCount < MIN_QUOTES) {
@@ -48,6 +63,16 @@ async function main(): Promise<void> {
     if (pseiBars === 0) {
       console.error("FAIL: no PSEI rows in market_bars_daily (run ingest:bars)");
       failed = true;
+    }
+    if (equitySymbolCount < MIN_EQUITY_SYMBOLS_WARN) {
+      console.warn(
+        `WARN: expected ~${MIN_EQUITY_SYMBOLS_WARN}+ equity symbols with bars, got ${equitySymbolCount}`,
+      );
+    }
+    if (forecastSymbolCount < MIN_FORECAST_SYMBOLS_WARN) {
+      console.warn(
+        `WARN: expected ${MIN_FORECAST_SYMBOLS_WARN}+ forecast symbols (run ingest:forecasts), got ${forecastSymbolCount}`,
+      );
     }
 
     if (failed) process.exit(1);

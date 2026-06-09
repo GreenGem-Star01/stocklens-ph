@@ -36,3 +36,28 @@ model MarketBarDaily {
   @@index([symbol, tradeDate(sort: Desc)], map: "market_bars_daily_symbol_date_idx")
   @@map("market_bars_daily")
 }
+
+model MarketForecastLatest {
+  symbol      String
+  model       String
+  horizonDays Int      @map("horizon_days")
+  generatedAt DateTime @map("generated_at") @db.Timestamptz(6)
+  points      Json
+
+  @@id([symbol, model, horizonDays])
+  @@map("market_forecasts_latest")
+}
+
+model MarketModelMetrics {
+  symbol      String
+  model       String
+  horizonDays Int      @map("horizon_days")
+  mae         Decimal  @db.Decimal(18, 6)
+  rmse        Decimal  @db.Decimal(18, 6)
+  mape        Decimal  @db.Decimal(10, 4)
+  dirAccuracy Decimal? @map("dir_accuracy") @db.Decimal(10, 4)
+  computedAt  DateTime @map("computed_at") @db.Timestamptz(6)
+
+  @@id([symbol, model, horizonDays])
+  @@map("market_model_metrics")
+}
