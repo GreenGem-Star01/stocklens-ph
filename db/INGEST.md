@@ -66,7 +66,8 @@ Restart the dev server after env changes: `npm run dev`.
 ### Bars ingest notes
 
 - Full universe: **~283 equities + PSEI** from `data/pse-official-universe.json`
-- Default delay **700ms/symbol**; use `--concurrency=3` for faster runs (respect EDGE rate limits)
+- Default delay **700ms/symbol**, concurrency **3** (`--concurrency=` to override, capped at 5 to respect EDGE rate limits)
+- Equities fetch from PSE EDGE only (Yahoo `.PS` doesn't resolve individual PH tickers, so it's skipped for equities — only PSEI uses Yahoo)
 - Health check warns if equity symbol count **< 250**
 
 ### Debug

@@ -236,12 +236,13 @@ export function StockDirectory({
     [entries, sector],
   );
 
-  useEffect(() => {
-    if (sector === "all" || subsector === "all") return;
-    if (!subsectors.includes(subsector)) {
+  const [prevSector, setPrevSector] = useState(sector);
+  if (sector !== prevSector) {
+    setPrevSector(sector);
+    if (subsector !== "all" && !subsectors.includes(subsector)) {
       setSubsector("all");
     }
-  }, [sector, subsector, subsectors]);
+  }
 
   const syncUrl = useCallback(
     (next: { query: string; sector: string; subsector: string }) => {
@@ -263,22 +264,22 @@ export function StockDirectory({
   }, [entries, query, sector, subsector, tier, kind, sortKey]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
   const pageEntries = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
+    const start = (currentPage - 1) * PAGE_SIZE;
     return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
+  }, [filtered, currentPage]);
 
-  useEffect(() => {
+  const filterKey = `${query}|${sector}|${subsector}|${tier}|${kind}|${sortKey}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
     setPage(1);
-  }, [query, sector, subsector, tier, kind, sortKey]);
+  }
 
   useEffect(() => {
     syncUrl({ query, sector, subsector });
   }, [query, sector, subsector, syncUrl]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
 
   const equityCount = getEquityDirectoryCount();
 
@@ -405,8 +406,8 @@ export function StockDirectory({
           ))}
         </div>
         <p className="text-sm text-muted-foreground">
-          Showing {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–
-          {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}{" "}
+          Showing {filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}–
+          {Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}{" "}
           ( {entries.length} total · {equityCount} listed equities )
         </p>
       </div>
@@ -435,19 +436,19 @@ export function StockDirectory({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
+                disabled={currentPage <= 1}
+                onClick={() => setPage(currentPage - 1)}
               >
                 Previous
               </Button>
               <span className="text-sm text-muted-foreground">
-                Page {page} of {totalPages}
+                Page {currentPage} of {totalPages}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage(currentPage + 1)}
               >
                 Next
               </Button>

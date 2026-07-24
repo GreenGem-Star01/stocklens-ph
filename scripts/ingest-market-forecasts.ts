@@ -37,6 +37,33 @@ function parseProbeSymbol(): string | null {
   return arg.split("=")[1]?.trim().toUpperCase() ?? null;
 }
 
+function parseConcurrency(): number {
+  const arg = process.argv.find((a) => a.startsWith("--concurrency="));
+  const n = arg ? Number(arg.split("=")[1]) : 4;
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, 5) : 4;
+}
+
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]!, i);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+  return results;
+}
+
 async function fetchBarsForSymbol(symbol: string) {
   const pool = getIngestPool();
   const rows = await pool.query<BarRow>(
@@ -167,12 +194,15 @@ async function main(): Promise<void> {
   const writeSnapshot = process.argv.includes("--write-snapshot");
   const runLstm = process.argv.includes("--lstm");
   const probe = parseProbeSymbol();
+  const concurrency = parseConcurrency();
 
   const symbols = probe
     ? [probe]
     : loadIngestSymbols();
 
-  console.log(`Computing forecasts for ${symbols.length} symbol(s)...`);
+  console.log(
+    `Computing forecasts for ${symbols.length} symbol(s) (concurrency ${concurrency})...`,
+  );
 
   const snapshotForecasts: Array<{
     symbol: string;
@@ -195,16 +225,20 @@ async function main(): Promise<void> {
   let processed = 0;
   let skipped = 0;
 
-  for (const symbol of symbols) {
+  await mapPool(symbols, concurrency, async (symbol) => {
     const bars = await fetchBarsForSymbol(symbol);
     if (bars.length < MIN_BARS) {
       skipped++;
       if (verbose) console.log(`  ${symbol}: skip (${bars.length} bars)`);
-      continue;
+      return;
     }
+
+    let horizon7Metrics: ReturnType<typeof walkForwardBacktest> = [];
 
     for (const horizonDays of FORECAST_HORIZONS) {
       const metrics = walkForwardBacktest(bars, horizonDays);
+      if (horizonDays === 7) horizon7Metrics = metrics;
+
       for (const m of metrics) {
         await upsertMetrics(
           symbol,
@@ -245,11 +279,11 @@ async function main(): Promise<void> {
     }
 
     processed++;
-    const best = bestModelMetrics(walkForwardBacktest(bars, 7));
+    const best = bestModelMetrics(horizon7Metrics);
     console.log(
       `  ${symbol}: OK (${bars.length} bars, best=${best?.model ?? "n/a"}) (${processed}/${symbols.length})`,
     );
-  }
+  });
 
   console.log(`Done. Processed ${processed}, skipped ${skipped} (insufficient bars).`);
 

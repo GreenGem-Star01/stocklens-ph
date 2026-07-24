@@ -28,8 +28,8 @@ function parseProbeSymbol(): string | null {
 
 function parseConcurrency(): number {
   const arg = process.argv.find((a) => a.startsWith("--concurrency="));
-  const n = arg ? Number(arg.split("=")[1]) : 1;
-  return Number.isFinite(n) && n >= 1 ? Math.min(n, 5) : 1;
+  const n = arg ? Number(arg.split("=")[1]) : 3;
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, 5) : 3;
 }
 
 async function upsertBars(
@@ -70,25 +70,24 @@ async function fetchBarsForSymbol(
   companyIds: Map<string, string>,
   verbose: boolean,
 ): Promise<{ bars: Awaited<ReturnType<typeof fetchYahooDailyBars>>; source: string }> {
-  let bars = await fetchYahooDailyBars(symbol, RANGE_DAYS, DELAY_MS, {
-    verbose,
-    maxAttempts: 3,
-  });
-
-  if (bars.length > 0) {
-    return { bars, source: "yahoo" };
-  }
-
+  // Yahoo's .PS tickers only resolve for indices (PSEI) — equities 404 there
+  // (see db/INGEST.md). Skip straight to EDGE for equities instead of burning
+  // 3 retries x 2 hosts (~3.6s+) per symbol on a request that always fails.
   if (symbol === "PSEI") {
+    const bars = await fetchYahooDailyBars(symbol, RANGE_DAYS, DELAY_MS, {
+      verbose,
+      maxAttempts: 3,
+    });
     return { bars, source: "yahoo" };
   }
 
+  const noBars: Awaited<ReturnType<typeof fetchYahooDailyBars>> = [];
   const companyId = companyIds.get(symbol);
   if (!companyId) {
     if (verbose) {
       console.warn(`  [edge] ${symbol}: no companyId in pse-official-universe.json`);
     }
-    return { bars, source: "none" };
+    return { bars: noBars, source: "none" };
   }
 
   const securityId = await fetchPseEdgeSecurityId(companyId, symbol, 80);
@@ -96,10 +95,10 @@ async function fetchBarsForSymbol(
     if (verbose) {
       console.warn(`  [edge] ${symbol}: could not resolve security_id`);
     }
-    return { bars, source: "none" };
+    return { bars: noBars, source: "none" };
   }
 
-  bars = await fetchPseEdgeHistoricalBars(
+  const bars = await fetchPseEdgeHistoricalBars(
     symbol,
     companyId,
     securityId,

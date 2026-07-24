@@ -19,7 +19,7 @@ Baselines-first MVP: technical analysis and walk-forward forecasts for all liste
 
 ```bash
 npm run ingest:quotes
-npm run ingest:bars          # ~45–90 min full universe
+npm run ingest:bars          # ~15–30 min full universe (concurrency 3)
 npm run ingest:forecasts
 npm run health:market
 npm run dev

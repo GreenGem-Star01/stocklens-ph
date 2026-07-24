@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Card,
@@ -41,33 +41,23 @@ export function StockTechnicalSection({
 }) {
   const [range, setRange] = useState("90d");
   const [points, setPoints] = useState<IndicatorPoint[]>([]);
-  const [forecastPoints, setForecastPoints] = useState(analysis.chartData);
-  const [loading, setLoading] = useState(true);
-
-  const refetch = useCallback(
-    async (nextRange: string) => {
-      setLoading(true);
-      try {
-        const path = tickerToPath(analysis.info.ticker);
-        const res = await fetch(`/api/stocks/${path}/indicators?range=${nextRange}`);
-        if (res.ok) {
-          const data = (await res.json()) as { points: IndicatorPoint[] };
-          setPoints(data.points);
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [analysis.info.ticker],
-  );
+  const [loadedRange, setLoadedRange] = useState<string | null>(null);
+  const loading = loadedRange !== range;
 
   useEffect(() => {
-    void refetch(range);
-  }, [range, refetch]);
-
-  useEffect(() => {
-    setForecastPoints(analysis.chartData);
-  }, [analysis.chartData]);
+    let cancelled = false;
+    const path = tickerToPath(analysis.info.ticker);
+    fetch(`/api/stocks/${path}/indicators?range=${range}`)
+      .then((res) => (res.ok ? (res.json() as Promise<{ points: IndicatorPoint[] }>) : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data) setPoints(data.points);
+        setLoadedRange(range);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range, analysis.info.ticker]);
 
   const isIndex = analysis.info.sector === "Index";
 
@@ -101,7 +91,7 @@ export function StockTechnicalSection({
           <StockTechnicalChart
             points={points}
             isIndex={isIndex}
-            forecastPoints={forecastPoints}
+            forecastPoints={analysis.chartData}
           />
           {loading ? (
             <div

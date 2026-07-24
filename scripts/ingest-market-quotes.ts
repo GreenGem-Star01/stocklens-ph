@@ -136,7 +136,7 @@ async function main(): Promise<void> {
     `Fetching EOD quotes for ${inputs.length} symbols (${source})...`,
   );
 
-  let quotes: EodQuote[] = useYahoo
+  const quotes: EodQuote[] = useYahoo
     ? await fetchYahooEodQuotes(
         inputs.map((i) => i.symbol),
         {
