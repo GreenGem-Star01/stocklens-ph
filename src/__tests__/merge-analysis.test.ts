@@ -22,7 +22,7 @@ describe("mergeAnalysisWithMarketData", () => {
   });
 
   it("keeps official PSE sector after merge", () => {
-    const merged = mergeAnalysisWithMarketData("SM.PS", null, []);
+    const merged = mergeAnalysisWithMarketData("SM.PS", undefined, []);
     expect(merged?.info.sector).toBe("Holding Firms");
     expect(merged?.info.subsector).toBeTruthy();
   });

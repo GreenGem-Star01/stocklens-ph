@@ -15,11 +15,16 @@ function entry(
     name: partial.ticker,
     sector: "Financials",
     subsector: "Banks",
+    path: `/stocks/${partial.ticker.toLowerCase()}`,
     lastClose: "—",
-    change: "—",
-    changeDirection: "neutral",
+    dailyChange: "—",
+    positive: false,
+    changeDirection: "flat",
+    trend: null,
     hasAnalysis: false,
     kind: "equity",
+    lastCloseNum: null,
+    changePctNum: null,
     ...partial,
   };
 }

@@ -40,18 +40,21 @@ test.describe("smoke", () => {
     }
   });
 
-  test("catalog stock page loads without forecast chart", async ({ page }) => {
+  test("stock page loads full analysis for a non-blue-chip ticker", async ({
+    page,
+  }) => {
+    // As of the technical-analysis/forecasts pipeline, full analysis renders
+    // for every listed ticker (not just blue-chip demo seeds) — this pins
+    // that AAA.PS, a non-demo ticker, gets the same treatment as BDO.
     await page.goto("/stock/aaa");
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByText(/Listed on the PSE/i)).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      /Asia Amalgamated/i,
+    );
+    await expect(page.getByText("AAA.PS")).toBeVisible();
+    await expect(page.getByText("Technical Analysis", { exact: true })).toBeVisible();
     await expect(
       page.getByRole("img", { name: /Price chart for AAA\.PS/i }),
-    ).toHaveCount(0);
-    await expect(page.getByText(/No live quote in the database yet/i)).toHaveCount(
-      0,
-    );
-    await expect(page.getByText(/End-of-day data/i)).toBeVisible();
-    await expect(page.getByText("Market price", { exact: true })).toBeVisible();
+    ).toBeVisible();
   });
 
   test("stocks directory shows neutral flat change without plus sign", async ({

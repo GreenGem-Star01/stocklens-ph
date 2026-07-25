@@ -35,7 +35,6 @@ export function parsePseiIndexFromHtml(html: string): EodQuote | null {
 
   if (!lastClose) return null;
 
-  const prev = lastClose - changeAbs;
   const asOf = new Date();
 
   return {

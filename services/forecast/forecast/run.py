@@ -53,12 +53,18 @@ def linear_regression_forecast(closes: list[float]) -> float:
 
 
 def lstm_forecast(closes: list[float]) -> float:
-    """Placeholder: use linear + momentum until a real LSTM is trained."""
-    base = linear_regression_forecast(closes)
-    if len(closes) >= 2:
-        momentum = closes[-1] - closes[-2]
-        return base + momentum * 0.5
-    return base
+    """Delegate to lstm.py TinyLSTM when available."""
+    try:
+        from forecast.lstm import TinyLSTM
+
+        model = TinyLSTM()
+        return model.predict(closes, 1)[0]
+    except Exception:
+        base = linear_regression_forecast(closes)
+        if len(closes) >= 2:
+            momentum = closes[-1] - closes[-2]
+            return base + momentum * 0.5
+        return base
 
 
 def trend_label(last: float, predicted: float) -> str:

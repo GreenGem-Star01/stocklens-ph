@@ -7,7 +7,7 @@ let pool: Pool | null = null;
 export function getIngestPool(): Pool {
   const url = assertValidDatabaseUrl();
   if (!pool) {
-    pool = new Pool({ connectionString: url, max: 3 });
+    pool = new Pool({ connectionString: url, max: 5 });
   }
   return pool;
 }

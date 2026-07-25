@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 
 import { checkRateLimit, rateLimitHeaders } from "@/lib/api/rate-limit";
-import { pathToTicker } from "@/lib/forecast";
+import { buildMarketAnalysis } from "@/lib/data/build-market-analysis";
+import { FORECAST_DISCLAIMER, pathToTicker } from "@/lib/forecast";
+import type { ForecastModel } from "@/lib/forecast/types";
+import { getDailyBars } from "@/lib/market/bars-repository";
+import { getLatestQuotes } from "@/lib/market/quotes-repository";
+import { tickerToSymbol } from "@/lib/market/symbol";
 import { buildForecastFromAnalysis } from "@/lib/services/forecast-service";
-import { getStockAnalysisData } from "@/lib/api/market-provider";
 import {
   forecastHorizonSchema,
   forecastModelSchema,
   tickerPathSchema,
 } from "@/lib/validation/ticker";
-import { FORECAST_DISCLAIMER } from "@/lib/forecast";
 
 export const revalidate = 300;
 
@@ -37,7 +40,7 @@ export async function GET(request: Request, context: RouteContext) {
     searchParams.get("horizon") ?? "7d",
   );
   const model = forecastModelSchema.safeParse(
-    searchParams.get("model") ?? "lstm",
+    searchParams.get("model") ?? "linear",
   );
   if (!horizon.success || !model.success) {
     return NextResponse.json({ error: "Invalid query parameters" }, { status: 400 });
@@ -48,7 +51,14 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Ticker not found" }, { status: 404 });
   }
 
-  const analysis = await getStockAnalysisData(symbol);
+  const quotes = await getLatestQuotes([symbol]);
+  const quote = quotes.get(tickerToSymbol(symbol));
+  const bars = await getDailyBars(symbol, "1y");
+  const analysis = await buildMarketAnalysis(symbol, quote, bars, {
+    model: model.data as ForecastModel,
+    horizon: horizon.data,
+  });
+
   if (!analysis) {
     return NextResponse.json({ error: "Ticker not found" }, { status: 404 });
   }
@@ -61,6 +71,8 @@ export async function GET(request: Request, context: RouteContext) {
       horizon: horizon.data,
       model: model.data,
       chartData: analysis.chartData,
+      performance: analysis.performance,
+      modelComparison: analysis.modelComparison,
       disclaimer: FORECAST_DISCLAIMER,
     },
     { headers: rateLimitHeaders(limit) },

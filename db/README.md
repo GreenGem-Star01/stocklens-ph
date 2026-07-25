@@ -1,5 +1,7 @@
 # Database migrations
 
+**Ingest & refresh schedule:** [`INGEST.md`](INGEST.md)
+
 **DSS production runbook (cron, VM, PM2):** [`DSS-OPS.md`](DSS-OPS.md)
 
 **Preferred (Supabase / Prisma 7):** define tables in [`prisma/schema.prisma`](../prisma/schema.prisma) and run:

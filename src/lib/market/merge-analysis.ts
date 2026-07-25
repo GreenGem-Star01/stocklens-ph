@@ -2,7 +2,6 @@ import { getStockAnalysisStatic } from "@/lib/data/stocks";
 import {
   formatChangePct,
   formatPriceAmount,
-  formatVolumeAmount,
   quoteToDisplay,
 } from "@/lib/market/format-quote";
 import { weekRangeFromBars } from "@/lib/market/bars-repository";

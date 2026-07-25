@@ -43,7 +43,7 @@ function ChartSkeleton() {
 export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) {
   const [range, setRange] = useState("30d");
   const [horizon, setHorizon] = useState("7d");
-  const [model, setModel] = useState("lstm");
+  const [model, setModel] = useState("linear");
   const [chartAnalysis, setChartAnalysis] = useState(analysis);
   const [loading, setLoading] = useState(false);
 
@@ -64,10 +64,15 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
           };
           const forecast = (await forecastRes.json()) as {
             chartData?: StockAnalysis["chartData"];
+            performance?: StockAnalysis["performance"];
+            modelComparison?: StockAnalysis["modelComparison"];
           };
           setChartAnalysis({
             ...analysis,
             chartData: forecast.chartData ?? history.points,
+            performance: forecast.performance ?? analysis.performance,
+            modelComparison:
+              forecast.modelComparison ?? analysis.modelComparison,
           });
         }
       } finally {
@@ -98,7 +103,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <CardTitle className="flex flex-wrap items-center gap-2 text-xl">
-              Historical Close Price + 7-Day LSTM Forecast
+              Historical Close Price + Baseline Forecast
               <Badge variant="secondary" className="text-xs font-normal">
                 Experimental
               </Badge>
@@ -123,9 +128,8 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
               value={horizon}
               onChange={onHorizonChange}
               options={[
-                ["3d", "3 days"],
                 ["7d", "7 days"],
-                ["14d", "14 days"],
+                ["30d", "30 days"],
               ]}
             />
             <ChartControl
@@ -133,9 +137,10 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
               value={model}
               onChange={onModelChange}
               options={[
-                ["lstm", "LSTM"],
-                ["linear", "Linear Reg"],
+                ["naive", "Naive"],
                 ["ma", "Moving Avg"],
+                ["linear", "Linear Reg"],
+                ["lstm", "LSTM"],
               ]}
               triggerClass="w-32"
             />
