@@ -20,7 +20,7 @@ import { applyMarketSession } from "@/lib/market/pse-session";
 import { getLatestQuotes, getQuotesAsOf } from "@/lib/market/quotes-repository";
 import { fetchAllForecastSymbols, fetchModelMetrics } from "@/lib/market/forecasts-repository";
 import { symbolToTicker, tickerToSymbol } from "@/lib/market/symbol";
-import type { BarRange, MarketBar } from "@/lib/market/types";
+import type { MarketBar } from "@/lib/market/types";
 import type { FeaturedStock, RecentAnalysisRow } from "@/lib/types/stock";
 import { getPseCompanyByTicker } from "@/lib/pse/universe";
 

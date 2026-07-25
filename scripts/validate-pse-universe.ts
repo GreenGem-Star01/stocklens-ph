@@ -1,13 +1,14 @@
 /**
  * Validate committed PSE universe + optional market snapshot (CI-safe, no network).
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { pseOfficialUniverseSchema } from "../src/lib/pse/universe-schema";
 
 const MIN_LISTINGS = 200;
 const MIN_SNAPSHOT_QUOTES = 200;
+const MIN_SNAPSHOT_FORECASTS = 200;
 const EPOCH_PLACEHOLDER = "1970-01-01";
 
 function main(): void {
@@ -50,31 +51,60 @@ function main(): void {
 
   console.log(`Universe OK: ${companies.length} listings (as of ${meta.asOf})`);
 
-  const snapshotPath = join(root, "data/market-quotes-snapshot.json");
-  try {
-    const snapshot = JSON.parse(readFileSync(snapshotPath, "utf8")) as {
+  const quotesSnapshotPath = join(root, "data/market-quotes-snapshot.json");
+  if (!existsSync(quotesSnapshotPath)) {
+    console.log("No market-quotes-snapshot.json (optional for CI)");
+  } else {
+    // File is tracked in git and `import`-ed directly by the app — a missing
+    // file is fine (generated on demand), but a present-and-corrupt file
+    // means the app will crash at build/runtime, so that must hard-fail here
+    // rather than be swallowed as "optional".
+    const snapshot = JSON.parse(readFileSync(quotesSnapshotPath, "utf8")) as {
       asOf?: string;
       quotes?: unknown[];
     };
     const count = Array.isArray(snapshot.quotes) ? snapshot.quotes.length : 0;
-    if (count > 0 && count < MIN_SNAPSHOT_QUOTES) {
+    if (count < MIN_SNAPSHOT_QUOTES) {
       console.error(
-        `Snapshot has ${count} quotes (expected >= ${MIN_SNAPSHOT_QUOTES} if present)`,
+        `market-quotes-snapshot.json has ${count} quotes (expected >= ${MIN_SNAPSHOT_QUOTES})`,
       );
       process.exit(1);
     }
-    if (
-      count > 0 &&
-      snapshot.asOf?.startsWith(EPOCH_PLACEHOLDER)
-    ) {
+    if (snapshot.asOf?.startsWith(EPOCH_PLACEHOLDER)) {
       console.error("Snapshot asOf is placeholder; run npm run setup:market-data");
       process.exit(1);
     }
-    if (count > 0) {
-      console.log(`Snapshot OK: ${count} quotes (as of ${snapshot.asOf})`);
+    console.log(`Quotes snapshot OK: ${count} quotes (as of ${snapshot.asOf})`);
+  }
+
+  const forecastsSnapshotPath = join(root, "data/market-forecasts-snapshot.json");
+  if (!existsSync(forecastsSnapshotPath)) {
+    console.log("No market-forecasts-snapshot.json (optional for CI)");
+  } else {
+    // Directly `import`-ed by src/lib/market/forecasts-snapshot.ts — an empty
+    // or truncated file breaks the Next.js build immediately (JSON import),
+    // so this must hard-fail rather than be treated as optional.
+    const snapshot = JSON.parse(readFileSync(forecastsSnapshotPath, "utf8")) as {
+      asOf?: string;
+      forecasts?: unknown[];
+      metrics?: unknown[];
+    };
+    const forecastCount = Array.isArray(snapshot.forecasts)
+      ? snapshot.forecasts.length
+      : 0;
+    if (forecastCount < MIN_SNAPSHOT_FORECASTS) {
+      console.error(
+        `market-forecasts-snapshot.json has ${forecastCount} forecast rows (expected >= ${MIN_SNAPSHOT_FORECASTS})`,
+      );
+      process.exit(1);
     }
-  } catch {
-    console.log("No market-quotes-snapshot.json (optional for CI)");
+    if (!Array.isArray(snapshot.metrics)) {
+      console.error("market-forecasts-snapshot.json is missing a metrics array");
+      process.exit(1);
+    }
+    console.log(
+      `Forecasts snapshot OK: ${forecastCount} forecast rows, ${snapshot.metrics.length} metrics rows (as of ${snapshot.asOf})`,
+    );
   }
 }
 

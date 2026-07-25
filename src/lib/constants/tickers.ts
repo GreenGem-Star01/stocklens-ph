@@ -4,7 +4,6 @@ import {
   getListedEquityCount,
   getPseCompanyByPath,
   getPseCompanyByTicker,
-  getPseIndices,
 } from "@/lib/pse/universe";
 
 export type TickerEntry = {

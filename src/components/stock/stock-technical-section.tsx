@@ -74,7 +74,7 @@ export function StockTechnicalSection({
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Range:</span>
             <Select value={range} onValueChange={(v) => v && setRange(v)}>
-              <SelectTrigger className="w-28">
+              <SelectTrigger className="w-28" aria-label="Technical analysis range">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -1,0 +1,53 @@
+# Optional: refresh committed forecasts snapshot for Vercel/CI (static mode).
+# Unlike market-snapshot.yml (quotes, hits PSE EDGE directly), this reads
+# market_bars_daily from Postgres, so it needs a DATABASE_URL secret with
+# read access — see db/INGEST.md. Skips the commit (not a hard failure) if
+# the secret isn't configured, so forking/testing this workflow is safe.
+
+name: Market forecasts snapshot
+
+on:
+  schedule:
+    - cron: "30 11 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Check DATABASE_URL is configured
+        id: has-db
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::DATABASE_URL secret not set — skipping forecasts snapshot refresh"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - run: npm run ingest:forecasts:snapshot
+        if: steps.has-db.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm run validate:data
+        if: steps.has-db.outputs.configured == 'true'
+      - name: Check for snapshot changes
+        id: diff
+        if: steps.has-db.outputs.configured == 'true'
+        run: |
+          git diff --quiet data/market-forecasts-snapshot.json && echo "changed=false" >> "$GITHUB_OUTPUT" || echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Commit snapshot
+        if: steps.has-db.outputs.configured == 'true' && steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/market-forecasts-snapshot.json
+          git commit -m "chore: refresh market forecasts snapshot"
+          git push

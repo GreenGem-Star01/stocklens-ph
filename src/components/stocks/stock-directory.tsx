@@ -334,7 +334,7 @@ export function StockDirectory({
               }
             }}
           >
-            <SelectTrigger className="w-full lg:w-52">
+            <SelectTrigger className="w-full lg:w-52" aria-label="Filter by sector">
               <SelectValue placeholder="Sector" />
             </SelectTrigger>
             <SelectContent>
@@ -351,7 +351,7 @@ export function StockDirectory({
             onValueChange={(v) => v && setSubsector(v)}
             disabled={sector === "all"}
           >
-            <SelectTrigger className="w-full lg:w-52">
+            <SelectTrigger className="w-full lg:w-52" aria-label="Filter by subsector">
               <SelectValue placeholder="Subsector" />
             </SelectTrigger>
             <SelectContent>
@@ -367,7 +367,7 @@ export function StockDirectory({
             value={sortKey}
             onValueChange={(v) => v && setSortKey(v as DirectorySortKey)}
           >
-            <SelectTrigger className="w-full lg:w-44">
+            <SelectTrigger className="w-full lg:w-44" aria-label="Sort stocks">
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
