@@ -19,8 +19,11 @@ export function loadIngestSymbols(): string[] {
     .filter((c) => c.status === "listed" && c.companyId)
     .map((c) => c.symbol.toUpperCase());
 
+  // Indices don't need companyId here (only EDGE's equity fallback does) —
+  // PSEI's bars come from Yahoo. Filtering on companyId silently dropped
+  // PSEI from bars/forecasts ingest whenever its universe entry lacked one.
   const indices = (raw.indices ?? [])
-    .filter((c) => c.companyId)
+    .filter((c) => c.symbol)
     .map((c) => c.symbol.toUpperCase());
 
   const symbols = [...new Set([...indices, ...equities])];

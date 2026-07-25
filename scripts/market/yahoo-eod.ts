@@ -73,7 +73,12 @@ type YahooChartResponse = {
 export function yahooRangeParam(rangeDays: number): string {
   if (rangeDays <= 90) return "3mo";
   if (rangeDays <= 365) return "1y";
-  return "max";
+  // Not "max": for low-liquidity tickers (e.g. PSEI.PS) Yahoo silently
+  // coarsens interval=1d + range=max to ~3-month bucket granularity,
+  // collapsing years of history into a single point. "2y" comfortably
+  // covers any rangeDays this app requests (currently 400) while staying
+  // in the range where Yahoo honors the requested daily interval.
+  return "2y";
 }
 
 export function parseDailyBarsFromChart(

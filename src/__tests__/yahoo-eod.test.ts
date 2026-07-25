@@ -7,8 +7,11 @@ import {
 } from "../../scripts/market/yahoo-eod";
 
 describe("yahooRangeParam", () => {
-  it("uses max for long history windows", () => {
-    expect(yahooRangeParam(400)).toBe("max");
+  it("uses 2y for long history windows, not max", () => {
+    // Not "max": Yahoo silently coarsens interval=1d + range=max to ~3-month
+    // buckets for low-liquidity tickers (e.g. PSEI.PS), collapsing years of
+    // history into a single point. See yahoo-eod.ts for the full story.
+    expect(yahooRangeParam(400)).toBe("2y");
     expect(yahooRangeParam(90)).toBe("3mo");
     expect(yahooRangeParam(200)).toBe("1y");
   });
