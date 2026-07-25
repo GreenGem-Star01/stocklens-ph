@@ -3,6 +3,7 @@
 import { ForecastDisclaimer } from "@/components/dashboard/forecast-disclaimer";
 import { WatchlistCards } from "@/components/watchlist/watchlist-cards";
 import { WatchlistEmpty } from "@/components/watchlist/watchlist-empty";
+import { WatchlistPortfolioBacktest } from "@/components/watchlist/watchlist-portfolio-backtest";
 import { WatchlistTable } from "@/components/watchlist/watchlist-table";
 import { WatchlistQuotesHydrator } from "@/components/watchlist/watchlist-quotes-hydrator";
 import { useWatchlistStore } from "@/lib/stores/watchlist-store";
@@ -19,6 +20,7 @@ export function WatchlistContent() {
       <WatchlistQuotesHydrator />
       <WatchlistCards />
       <WatchlistTable />
+      <WatchlistPortfolioBacktest />
       <ForecastDisclaimer />
     </>
   );

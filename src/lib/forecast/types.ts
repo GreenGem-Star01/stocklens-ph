@@ -31,3 +31,13 @@ export type ModelComparisonRow = {
   dirAccuracy: string | null;
   best: boolean;
 };
+
+export type PortfolioModelMetrics = {
+  model: BaselineModel;
+  horizonDays: number;
+  avgMae: number;
+  avgRmse: number;
+  avgMape: number;
+  avgDirAccuracy: number | null;
+  tickerCount: number;
+};

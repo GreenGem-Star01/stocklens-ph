@@ -1,8 +1,10 @@
 import { predictWithModel } from "@/lib/forecast/models";
-import type {
-  BaselineModel,
-  ModelComparisonRow,
-  ModelMetrics,
+import {
+  BASELINE_MODELS,
+  type BaselineModel,
+  type ModelComparisonRow,
+  type ModelMetrics,
+  type PortfolioModelMetrics,
 } from "@/lib/forecast/types";
 import type { MarketBar } from "@/lib/market/types";
 
@@ -120,4 +122,68 @@ export function metricsToComparisonRows(
 export function bestModelMetrics(metrics: ModelMetrics[]): ModelMetrics | null {
   if (!metrics.length) return null;
   return metrics.reduce((best, m) => (m.mae < best.mae ? m : best));
+}
+
+function average(values: number[]): number {
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+/**
+ * Aggregates per-ticker walkForwardBacktest results (one array per ticker)
+ * into portfolio-level averages per model. A ticker with insufficient bars
+ * contributes [] from walkForwardBacktest and is naturally excluded here.
+ */
+export function aggregatePortfolioMetrics(
+  perTickerMetrics: ModelMetrics[][],
+  horizonDays: number,
+): PortfolioModelMetrics[] {
+  const byModel = new Map<BaselineModel, ModelMetrics[]>();
+
+  for (const tickerMetrics of perTickerMetrics) {
+    for (const m of tickerMetrics) {
+      if (m.model === "lstm") continue;
+      const rows = byModel.get(m.model) ?? [];
+      rows.push(m);
+      byModel.set(m.model, rows);
+    }
+  }
+
+  const results: PortfolioModelMetrics[] = [];
+  for (const model of BASELINE_MODELS) {
+    const rows = byModel.get(model);
+    if (!rows || !rows.length) continue;
+
+    const dirRows = rows.filter(
+      (r): r is ModelMetrics & { dirAccuracy: number } => r.dirAccuracy != null,
+    );
+
+    results.push({
+      model,
+      horizonDays,
+      avgMae: average(rows.map((r) => r.mae)),
+      avgRmse: average(rows.map((r) => r.rmse)),
+      avgMape: average(rows.map((r) => r.mape)),
+      avgDirAccuracy: dirRows.length
+        ? average(dirRows.map((r) => r.dirAccuracy))
+        : null,
+      tickerCount: rows.length,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Picks the best-fit model across a portfolio by lowest average MAPE, not
+ * MAE. Raw MAE is peso-denominated, so averaging it across tickers at very
+ * different price levels (e.g. ₱1.63 vs ₱2000) would let one expensive
+ * ticker dominate — MAPE normalizes for that. bestModelMetrics (MAE-based)
+ * is still correct for the single-ticker case, where the price scale is
+ * fixed.
+ */
+export function bestPortfolioModel(
+  metrics: PortfolioModelMetrics[],
+): PortfolioModelMetrics | null {
+  if (!metrics.length) return null;
+  return metrics.reduce((best, m) => (m.avgMape < best.avgMape ? m : best));
 }
