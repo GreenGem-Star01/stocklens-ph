@@ -1,8 +1,11 @@
-# Optional: refresh committed forecasts snapshot for Vercel/CI (static mode).
+# Optional: refresh the forecasts snapshot in Supabase Storage (static mode).
 # Unlike market-snapshot.yml (quotes, hits PSE EDGE directly), this reads
 # market_bars_daily from Postgres, so it needs a DATABASE_URL secret with
-# read access — see db/INGEST.md. Skips the commit (not a hard failure) if
-# the secret isn't configured, so forking/testing this workflow is safe.
+# read access — see db/INGEST.md. Also needs SUPABASE_URL and
+# SUPABASE_SERVICE_ROLE_KEY to publish the snapshot. Skips the run (not a
+# hard failure) if secrets aren't configured, so forking/testing this
+# workflow is safe. No git commit happens here — the ingest script publishes
+# directly to Supabase Storage; the app reads it at request time.
 
 name: Market forecasts snapshot
 
@@ -14,8 +17,6 @@ on:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,31 +24,18 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
-      - name: Check DATABASE_URL is configured
-        id: has-db
+      - name: Check required secrets are configured
+        id: has-secrets
         run: |
-          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+          if [ -z "${{ secrets.DATABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::DATABASE_URL secret not set — skipping forecasts snapshot refresh"
+            echo "::warning::DATABASE_URL, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY not set — skipping forecasts snapshot refresh"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
       - run: npm run ingest:forecasts:snapshot
-        if: steps.has-db.outputs.configured == 'true'
+        if: steps.has-secrets.outputs.configured == 'true'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      - run: npm run validate:data
-        if: steps.has-db.outputs.configured == 'true'
-      - name: Check for snapshot changes
-        id: diff
-        if: steps.has-db.outputs.configured == 'true'
-        run: |
-          git diff --quiet data/market-forecasts-snapshot.json && echo "changed=false" >> "$GITHUB_OUTPUT" || echo "changed=true" >> "$GITHUB_OUTPUT"
-      - name: Commit snapshot
-        if: steps.has-db.outputs.configured == 'true' && steps.diff.outputs.changed == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/market-forecasts-snapshot.json
-          git commit -m "chore: refresh market forecasts snapshot"
-          git push
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

@@ -152,7 +152,7 @@ async function loadForecastPoints(
     if (fromDb?.length) return fromDb;
   }
 
-  const fromSnap = getForecastFromSnapshot(symbol, model, horizonDays);
+  const fromSnap = await getForecastFromSnapshot(symbol, model, horizonDays);
   if (fromSnap?.length) return fromSnap;
 
   if (bars.length >= 60) {
@@ -172,7 +172,8 @@ async function loadMetrics(
     if (fromDb.length) return fromDb;
   }
 
-  return getMetricsFromSnapshot(symbol, horizonDays).map((m) => ({
+  const snapMetrics = await getMetricsFromSnapshot(symbol, horizonDays);
+  return snapMetrics.map((m) => ({
     model: m.model as ForecastModel,
     horizonDays: m.horizonDays,
     mae: m.mae,

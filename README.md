@@ -11,7 +11,7 @@ Educational Philippine stock analytics dashboard with experimental AI forecasts.
 | Target | `MARKET_DATA_SOURCE` | Prices / PSEi | Analysis & forecasts |
 |--------|----------------------|---------------|----------------------|
 | **DSS production** | `db` | Supabase `market_quotes_latest` + `market_bars_daily` | Demo seeds in `src/lib/data/` |
-| **Vercel preview / CI** | `static` | `data/market-quotes-snapshot.json` | Same demo seeds |
+| **Vercel preview / CI** | `static` | `data/market-quotes-snapshot.json` | Supabase Storage snapshot (falls back to demo seeds) |
 
 EOD only — not real-time. Batch ingest runs after PSE close; the app never calls EDGE/Yahoo on page load.
 
@@ -161,7 +161,7 @@ python3 -m forecast.lstm --closes '[100,101,102,103]' --horizon 7
 | `npm run ingest:quotes` | Batch EOD quotes → Postgres (+ optional snapshot) |
 | `npm run ingest:bars` | Daily OHLCV for all listed equities → Postgres (exits 1 if PSEI missing) |
 | `npm run ingest:forecasts` | Baseline forecasts + metrics → Postgres |
-| `npm run ingest:forecasts:snapshot` | Forecasts ingest + `data/market-forecasts-snapshot.json` |
+| `npm run ingest:forecasts:snapshot` | Forecasts ingest + publish to Supabase Storage (`SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` required) |
 | `npm run ingest:forecasts:lstm` | Optional LSTM forecasts via Python |
 | `npm run ingest:quotes:snapshot` | Quotes ingest + write snapshot file |
 | `npm run setup:market-data` | Same as snapshot ingest (static/Vercel refresh) |

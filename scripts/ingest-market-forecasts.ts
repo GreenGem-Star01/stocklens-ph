@@ -4,7 +4,6 @@
  * Flags: --write-snapshot, --probe=BDO, --verbose
  */
 import "dotenv/config";
-import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { walkForwardBacktest, bestModelMetrics } from "../src/lib/forecast/backtest";
@@ -20,6 +19,7 @@ import { loadIngestSymbols } from "./lib/universe-symbols";
 
 const MIN_BARS = 60;
 const BAR_LOOKBACK = 400;
+const MIN_SNAPSHOT_FORECASTS = 200;
 
 type BarRow = {
   symbol: string;
@@ -288,20 +288,47 @@ async function main(): Promise<void> {
   console.log(`Done. Processed ${processed}, skipped ${skipped} (insufficient bars).`);
 
   if (writeSnapshot) {
-    const out = join(process.cwd(), "data/market-forecasts-snapshot.json");
-    writeFileSync(
-      out,
-      JSON.stringify(
-        {
+    if (snapshotForecasts.length < MIN_SNAPSHOT_FORECASTS) {
+      console.error(
+        `Refusing to publish snapshot: only ${snapshotForecasts.length} forecast rows (expected >= ${MIN_SNAPSHOT_FORECASTS}).`,
+      );
+      await closeIngestPool();
+      process.exit(1);
+    }
+
+    const baseUrl = process.env.SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!baseUrl || !serviceRoleKey) {
+      throw new Error(
+        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to publish the forecasts snapshot.",
+      );
+    }
+
+    const res = await fetch(
+      `${baseUrl}/storage/v1/object/market-data/market-forecasts-snapshot.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
+          "x-upsert": "true",
+        },
+        body: JSON.stringify({
           asOf: new Date().toISOString(),
           forecasts: snapshotForecasts,
           metrics: snapshotMetrics,
-        },
-        null,
-        2,
-      ),
+        }),
+      },
     );
-    console.log(`Wrote ${out}`);
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Failed to publish snapshot: HTTP ${res.status} ${body}`);
+    }
+
+    console.log(
+      `Published snapshot to Supabase Storage (${snapshotForecasts.length} forecast rows).`,
+    );
   }
 
   await closeIngestPool();

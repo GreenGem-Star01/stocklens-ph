@@ -8,7 +8,6 @@ import { pseOfficialUniverseSchema } from "../src/lib/pse/universe-schema";
 
 const MIN_LISTINGS = 200;
 const MIN_SNAPSHOT_QUOTES = 200;
-const MIN_SNAPSHOT_FORECASTS = 200;
 const EPOCH_PLACEHOLDER = "1970-01-01";
 
 function main(): void {
@@ -76,36 +75,9 @@ function main(): void {
     }
     console.log(`Quotes snapshot OK: ${count} quotes (as of ${snapshot.asOf})`);
   }
-
-  const forecastsSnapshotPath = join(root, "data/market-forecasts-snapshot.json");
-  if (!existsSync(forecastsSnapshotPath)) {
-    console.log("No market-forecasts-snapshot.json (optional for CI)");
-  } else {
-    // Directly `import`-ed by src/lib/market/forecasts-snapshot.ts — an empty
-    // or truncated file breaks the Next.js build immediately (JSON import),
-    // so this must hard-fail rather than be treated as optional.
-    const snapshot = JSON.parse(readFileSync(forecastsSnapshotPath, "utf8")) as {
-      asOf?: string;
-      forecasts?: unknown[];
-      metrics?: unknown[];
-    };
-    const forecastCount = Array.isArray(snapshot.forecasts)
-      ? snapshot.forecasts.length
-      : 0;
-    if (forecastCount < MIN_SNAPSHOT_FORECASTS) {
-      console.error(
-        `market-forecasts-snapshot.json has ${forecastCount} forecast rows (expected >= ${MIN_SNAPSHOT_FORECASTS})`,
-      );
-      process.exit(1);
-    }
-    if (!Array.isArray(snapshot.metrics)) {
-      console.error("market-forecasts-snapshot.json is missing a metrics array");
-      process.exit(1);
-    }
-    console.log(
-      `Forecasts snapshot OK: ${forecastCount} forecast rows, ${snapshot.metrics.length} metrics rows (as of ${snapshot.asOf})`,
-    );
-  }
+  // Forecasts snapshot now lives in Supabase Storage, not a local file — see
+  // src/lib/market/forecasts-snapshot.ts. Its shape is validated at publish
+  // time in scripts/ingest-market-forecasts.ts instead of here.
 }
 
 main();
