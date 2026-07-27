@@ -178,7 +178,7 @@ export const staticMarketProvider: MarketProvider = {
   },
 
   async getForecastsData() {
-    const snapRows = getAllForecastsFromSnapshot();
+    const snapRows = await getAllForecastsFromSnapshot();
     if (snapRows.length === 0) {
       return {
         forecasts: allForecasts,

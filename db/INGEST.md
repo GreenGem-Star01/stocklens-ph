@@ -14,6 +14,8 @@ Batch EOD only (not real-time). Run after PSE close or on a schedule.
 | `.env.local` | Next.js dev + ingest scripts | `MARKET_DATA_SOURCE=db`, `DATABASE_URL` (pooler **6543**, `?pgbouncer=true`) |
 | `.env.ingest` | Cron on DSS (optional) | Writer `DATABASE_URL` |
 
+**Forecasts snapshot (all modes):** `SUPABASE_URL` (public, `https://<project-ref>.supabase.co`) is needed to *read* the snapshot — put it wherever the app runs (`.env.local`, Vercel env vars). `SUPABASE_SERVICE_ROLE_KEY` is needed only to *publish* it and must stay ingest-only (`.env.local`/`.env.ingest`/GitHub Actions secret) — never in the deployed app's runtime env.
+
 **Supabase hostname:** copy the full pooler host from the dashboard (e.g. `aws-1-ap-southeast-1.pooler.supabase.com`). Do not use the region slug alone (`ap-southeast-1.pooler...` → DNS error).
 
 URL-encode special characters in passwords (`!` → `%21`).
@@ -127,14 +129,13 @@ Vercel env: `MARKET_DATA_SOURCE=static` (no `DATABASE_URL`).
 
 Optional: enable [`.github/workflows/market-snapshot.yml`](../.github/workflows/market-snapshot.yml) for scheduled snapshot refresh on GitHub Actions.
 
-**Forecasts snapshot (Vercel):**
+**Forecasts snapshot (Vercel):** publishes directly to Supabase Storage — no git commit. Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (ingest-only, never in the app's runtime env).
 
 ```bash
 npm run ingest:forecasts:snapshot
-git add data/market-forecasts-snapshot.json
 ```
 
-**Note:** Vercel has no live Postgres — quotes and forecast snapshots are committed JSON. Full bars/charts require `MARKET_DATA_SOURCE=db` (local / DSS).
+**Note:** Vercel has no live Postgres. The quotes snapshot is committed JSON; the forecasts snapshot lives in Supabase Storage and is read at request time (cached 5 min) instead of bundled at build time. Full bars/charts require `MARKET_DATA_SOURCE=db` (local / DSS).
 
 ### DSS production (`MARKET_DATA_SOURCE=db`)
 
@@ -189,7 +190,7 @@ GROUP BY symbol;
 npm run ingest:quotes              # quotes → DB
 npm run ingest:bars                # bars → DB (all listed; ~45–90 min)
 npm run ingest:forecasts           # baselines + metrics → DB
-npm run ingest:forecasts:snapshot  # forecasts → DB + snapshot (Vercel)
+npm run ingest:forecasts:snapshot  # forecasts → DB + Supabase Storage (Vercel)
 npm run ingest:forecasts:lstm      # optional LSTM rows (Python)
 npm run ingest:quotes:snapshot     # quotes → DB + snapshot file (Vercel)
 npm run health:market              # post-ingest check

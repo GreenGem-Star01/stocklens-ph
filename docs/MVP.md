@@ -25,11 +25,10 @@ npm run health:market
 npm run dev
 ```
 
-Static/Vercel mode:
+Static/Vercel mode: publishes directly to Supabase Storage, no git commit needed.
 
 ```bash
 npm run ingest:forecasts:snapshot
-git add data/market-forecasts-snapshot.json
 ```
 
 ## Architecture
