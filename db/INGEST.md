@@ -92,6 +92,7 @@ npm run setup:dss -- --ingest
 | When | Command | Why |
 |------|---------|-----|
 | **Mon–Fri ~18:00** (after PSE close) | `ingest:quotes` → `ingest:bars` → `ingest:forecasts` | Fresh EOD prices, charts, forecasts |
+| **Mon–Fri every 2 min, 9:30–15:30** (DSS VM only) | `ingest:quotes -- --symbols=PSEI,BDO,JFC,ALI,TEL,SMPH --respect-market-hours` | Live dashboard price refresh (6 fixed symbols only — see below) |
 | **Sunday ~06:00** | `npm run sync:pse` | Refresh listing directory if PSE listings changed |
 | **After `sync:pse`** | Commit `data/pse-official-universe.json` if diff | Keeps stock directory in sync |
 
@@ -99,9 +100,14 @@ Example cron (DSS VM):
 
 ```cron
 0 18 * * 1-5 /path/to/stocklens-ph/db/cron.example.sh >> /var/log/stocklens-ingest.log 2>&1
+*/2 9-15 * * 1-5 flock -n /tmp/stocklens-intraday.lock -c "cd /path/to/stocklens-ph && npm run ingest:quotes -- --symbols=PSEI,BDO,JFC,ALI,TEL,SMPH --respect-market-hours" >> /var/log/stocklens-intraday.log 2>&1
 ```
 
 See [`cron.example.sh`](cron.example.sh) and [`crontab.example`](crontab.example).
+
+### Intraday dashboard refresh
+
+The dashboard's 6 fixed featured symbols (`PSEI`, `BDO`, `JFC`, `ALI`, `TEL`, `SMPH` — see `src/lib/data/dashboard-featured.ts`) can refresh every ~60s during trading hours instead of waiting for the next day's batch. **Deliberately not** the full ~284-symbol universe: PSE EDGE's quotes endpoint (`scripts/market/pse-edge-quotes.ts`) is one request per symbol and scoped to once-daily EOD use — polling all symbols every 2 minutes would be ~51,000 requests/day and risks the ingest IP getting throttled or blocked. `--respect-market-hours` makes the script no-op outside 9:30–15:30 Manila (checked via `src/lib/market/pse-session.ts`), so the coarse `9-15` cron hour window is safe. Only runs on the DSS VM (`MARKET_DATA_SOURCE=db`) — Vercel/static mode has no live DB, so the dashboard's "Live" indicator never appears there.
 
 ---
 

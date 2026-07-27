@@ -147,8 +147,11 @@ Paste (adjust path) or use [`crontab.example`](crontab.example):
 
 ```cron
 0 18 * * 1-5 /var/www/stocklens-ph/db/cron.example.sh >> /var/log/stocklens-ingest.log 2>&1
+*/2 9-15 * * 1-5 flock -n /tmp/stocklens-intraday.lock -c "cd /var/www/stocklens-ph && npm run ingest:quotes -- --symbols=PSEI,BDO,JFC,ALI,TEL,SMPH --respect-market-hours" >> /var/log/stocklens-intraday.log 2>&1
 0 6 * * 0 cd /var/www/stocklens-ph && npm run sync:pse >> /var/log/stocklens-sync.log 2>&1
 ```
+
+Optional — the second line refreshes the dashboard's 6 fixed featured symbols every ~2 min during trading hours (see `db/INGEST.md`'s "Intraday dashboard refresh" section for why it's scoped that narrowly). Skip it if you don't want live dashboard prices; nothing else depends on it.
 
 ### 3. Verify next run
 

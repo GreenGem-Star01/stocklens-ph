@@ -4,11 +4,13 @@ import { MarketOverview } from "@/components/dashboard/market-overview";
 import { PseiChart } from "@/components/dashboard/psei-chart-lazy";
 import { RecentAnalysisTable } from "@/components/dashboard/recent-analysis-table";
 import { StockSearch } from "@/components/dashboard/stock-search";
+import { isDbMarketEnabled } from "@/lib/db/config";
 import { APP_PAGE_CLASS } from "@/lib/layout";
 import { getMarketOverview } from "@/lib/services/market-service";
 
 export default async function DashboardPage() {
   const market = await getMarketOverview();
+  const liveQuotesAvailable = isDbMarketEnabled() && !market.dbUnreachable;
 
   return (
     <div className={APP_PAGE_CLASS}>
@@ -29,8 +31,8 @@ export default async function DashboardPage() {
           {market.stale ? " · data may be stale" : ""}
         </p>
       ) : null}
-      <MarketOverview data={market.overview} />
-      <FeaturedStocks stocks={market.featured} />
+      <MarketOverview data={market.overview} liveQuotesAvailable={liveQuotesAvailable} />
+      <FeaturedStocks stocks={market.featured} liveQuotesAvailable={liveQuotesAvailable} />
       <PseiChart data={market.pseiChart} />
       <RecentAnalysisTable rows={market.recent} />
       <ForecastDisclaimer />
