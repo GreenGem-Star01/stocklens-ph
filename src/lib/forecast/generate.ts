@@ -21,6 +21,7 @@ export function generateForecast(
   model: ForecastModel,
   horizonDays: number,
   historyDays = CHART_HISTORY_DAYS,
+  param?: number,
 ): ChartPoint[] {
   const sorted = [...bars].sort((a, b) => a.tradeDate.localeCompare(b.tradeDate));
   if (!sorted.length) return [];
@@ -39,7 +40,7 @@ export function generateForecast(
   if (model === "lstm") {
     futurePrices = predictWithModel("linear", closes, horizonDays);
   } else {
-    futurePrices = predictWithModel(model as BaselineModel, closes, horizonDays);
+    futurePrices = predictWithModel(model as BaselineModel, closes, horizonDays, param);
   }
 
   const forecastPoints: ChartPoint[] = futurePrices.map((forecast, i) => ({

@@ -65,10 +65,17 @@ function directionalAccuracy(actual: number[], predicted: number[]): number | nu
   return total ? (correct / total) * 100 : null;
 }
 
+/**
+ * param overrides the tunable setting (ma: window, linear: lookback) for
+ * every model in `models`. Intended for a single-element `models` array —
+ * a shared param across naive+ma+linear together wouldn't be meaningful,
+ * since naive has none and ma/linear's params aren't the same kind of value.
+ */
 export function walkForwardBacktest(
   bars: MarketBar[],
   horizonDays: number,
   models: BaselineModel[] = DEFAULT_MODELS,
+  param?: number,
 ): ModelMetrics[] {
   const closes = closesFromBars(bars);
   if (closes.length < MIN_HISTORY) return [];
@@ -84,7 +91,7 @@ export function walkForwardBacktest(
       const train = window.slice(0, i);
       const targetIdx = i + horizonDays - 1;
       if (targetIdx >= window.length) break;
-      const forecast = predictWithModel(model, train, horizonDays);
+      const forecast = predictWithModel(model, train, horizonDays, param);
       actuals.push(window[targetIdx]!);
       preds.push(forecast[horizonDays - 1]!);
     }
