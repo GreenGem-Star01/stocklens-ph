@@ -19,7 +19,28 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { tickerToPath } from "@/lib/forecast";
+import type { ModelComparisonRow } from "@/lib/forecast/types";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
+
+// Presets, not free numeric input — matches every other forecast control
+// here being a Select over a fixed option set. Values mirror
+// TUNABLE_PARAM_PRESETS in the forecast API route.
+const TUNABLE_PARAM_OPTIONS: Record<string, [string, string][]> = {
+  ma: [
+    ["10", "Short (10d)"],
+    ["20", "Default (20d)"],
+    ["50", "Long (50d)"],
+  ],
+  linear: [
+    ["15", "Short (15d)"],
+    ["30", "Default (30d)"],
+    ["60", "Long (60d)"],
+  ],
+};
+const DEFAULT_PARAM_FOR_MODEL: Record<string, string> = {
+  ma: "20",
+  linear: "30",
+};
 
 const StockForecastChart = dynamic(
   () =>
@@ -44,19 +65,40 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
   const [range, setRange] = useState("30d");
   const [horizon, setHorizon] = useState("7d");
   const [model, setModel] = useState("linear");
+  const [param, setParam] = useState<string | null>(
+    DEFAULT_PARAM_FOR_MODEL.linear ?? null,
+  );
   const [chartAnalysis, setChartAnalysis] = useState(analysis);
+  const [customPerformance, setCustomPerformance] =
+    useState<ModelComparisonRow | null>(null);
   const [loading, setLoading] = useState(false);
 
   const refetch = useCallback(
-    async (nextRange: string, nextHorizon: string, nextModel: string) => {
+    async (
+      nextRange: string,
+      nextHorizon: string,
+      nextModel: string,
+      nextParam: string | null,
+    ) => {
       setLoading(true);
       try {
         const path = tickerToPath(analysis.info.ticker);
+        const forecastUrl = new URL(
+          `/api/stocks/${path}/forecast`,
+          window.location.origin,
+        );
+        forecastUrl.searchParams.set("horizon", nextHorizon);
+        forecastUrl.searchParams.set("model", nextModel);
+        // Only send param when it's actually non-default — otherwise every
+        // ma/linear request would trigger a live "Custom fit" callout even
+        // when nothing was customized, which reads as misleading.
+        if (nextParam && nextParam !== DEFAULT_PARAM_FOR_MODEL[nextModel]) {
+          forecastUrl.searchParams.set("param", nextParam);
+        }
+
         const [historyRes, forecastRes] = await Promise.all([
           fetch(`/api/stocks/${path}/history?range=${nextRange}`),
-          fetch(
-            `/api/stocks/${path}/forecast?horizon=${nextHorizon}&model=${nextModel}`,
-          ),
+          fetch(forecastUrl),
         ]);
         if (historyRes.ok && forecastRes.ok) {
           const history = (await historyRes.json()) as {
@@ -66,6 +108,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
             chartData?: StockAnalysis["chartData"];
             performance?: StockAnalysis["performance"];
             modelComparison?: StockAnalysis["modelComparison"];
+            customPerformance?: ModelComparisonRow | null;
           };
           setChartAnalysis({
             ...analysis,
@@ -74,6 +117,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
             modelComparison:
               forecast.modelComparison ?? analysis.modelComparison,
           });
+          setCustomPerformance(forecast.customPerformance ?? null);
         }
       } finally {
         setLoading(false);
@@ -84,18 +128,27 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
 
   const onRangeChange = (value: string) => {
     setRange(value);
-    void refetch(value, horizon, model);
+    void refetch(value, horizon, model, param);
   };
 
   const onHorizonChange = (value: string) => {
     setHorizon(value);
-    void refetch(range, value, model);
+    void refetch(range, value, model, param);
   };
 
   const onModelChange = (value: string) => {
     setModel(value);
-    void refetch(range, horizon, value);
+    const nextParam = DEFAULT_PARAM_FOR_MODEL[value] ?? null;
+    setParam(nextParam);
+    void refetch(range, horizon, value, nextParam);
   };
+
+  const onParamChange = (value: string) => {
+    setParam(value);
+    void refetch(range, horizon, model, value);
+  };
+
+  const paramOptions = TUNABLE_PARAM_OPTIONS[model];
 
   return (
     <Card className="border-2">
@@ -144,6 +197,15 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
               ]}
               triggerClass="w-32"
             />
+            {paramOptions && param ? (
+              <ChartControl
+                label={model === "ma" ? "Window:" : "Lookback:"}
+                value={param}
+                onChange={onParamChange}
+                options={paramOptions}
+                triggerClass="w-32"
+              />
+            ) : null}
           </div>
         </div>
       </CardHeader>
@@ -160,6 +222,18 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
             </div>
           ) : null}
         </div>
+        {customPerformance ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Custom fit ({model === "ma" ? "window" : "lookback"}={param}):{" "}
+            MAE {customPerformance.mae} · RMSE {customPerformance.rmse} · MAPE{" "}
+            {customPerformance.mape}
+            {customPerformance.dirAccuracy
+              ? ` · Directional accuracy ${customPerformance.dirAccuracy}`
+              : ""}
+            . Not the same as the precomputed comparison table below, which
+            always uses default settings.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

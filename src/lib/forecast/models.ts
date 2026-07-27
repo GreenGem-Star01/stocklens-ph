@@ -53,18 +53,23 @@ function linearRegressionNext(closes: number[]): number {
   return intercept + slope * n;
 }
 
+/**
+ * param overrides the model's tunable setting (ma: window, linear: lookback).
+ * Ignored by naive, which has no tunable parameter.
+ */
 export function predictWithModel(
   model: BaselineModel,
   closes: number[],
   horizonDays: number,
+  param?: number,
 ): number[] {
   switch (model) {
     case "naive":
       return naivePredict(closes, horizonDays);
     case "ma":
-      return maPredict(closes, horizonDays);
+      return maPredict(closes, horizonDays, param);
     case "linear":
-      return linearPredict(closes, horizonDays);
+      return linearPredict(closes, horizonDays, param);
     default:
       return naivePredict(closes, horizonDays);
   }
