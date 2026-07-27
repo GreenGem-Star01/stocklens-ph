@@ -2,12 +2,16 @@
  * Batch EOD quotes ingest → market_quotes_latest + optional snapshot
  * Run: npm run setup:market-data
  * Source: PSE EDGE (default) or --source=yahoo
+ * Flags: --symbols=PSEI,BDO,... (allow-list, for the intraday cron —
+ * see db/INGEST.md), --respect-market-hours (no-op when PSE is closed)
  */
 import "dotenv/config";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import universe from "../data/pse-official-universe.json";
+import { getMarketSession } from "../src/lib/market/pse-session";
 import { closeIngestPool, getIngestPool } from "./lib/db-ingest";
 import { fetchPseiIndexQuote } from "./market/pse-edge-index";
 import {
@@ -21,6 +25,20 @@ const MIN_QUOTES = 200;
 const SOURCE_PSE = "pse_edge_eod";
 const SOURCE_PSE_INDEX = "pse_edge_index_summary";
 const SOURCE_YAHOO = "yahoo_finance_eod";
+
+/** Parses --symbols=PSEI,BDO,... into an uppercase allow-list, or null if
+ * the flag wasn't passed (meaning "no filter, use the full universe"). */
+export function parseSymbolsFilter(argv: string[]): Set<string> | null {
+  const arg = argv.find((a) => a.startsWith("--symbols="));
+  if (!arg) return null;
+  return new Set(
+    arg
+      .split("=")[1]!
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean),
+  );
+}
 
 async function upsertQuotes(
   quotes: Awaited<ReturnType<typeof fetchPseEdgeQuotes>>,
@@ -109,21 +127,31 @@ async function main(): Promise<void> {
   const useYahoo = process.argv.includes("--source=yahoo");
   const limitArg = process.argv.find((a) => a.startsWith("--limit="));
   const limit = limitArg ? Number(limitArg.split("=")[1]) : undefined;
+  const symbolsFilter = parseSymbolsFilter(process.argv);
+  const respectMarketHours = process.argv.includes("--respect-market-hours");
+
+  if (respectMarketHours && getMarketSession().status === "closed") {
+    console.log("Market closed — skipping intraday poll.");
+    return;
+  }
 
   const companies = universe.companies.filter(
     (c) => c.status === "listed" && c.companyId,
   );
 
-  let inputs: EdgeQuoteInput[] = companies.map((c) => ({
-    symbol: c.symbol,
-    companyId: c.companyId!,
-  }));
+  let inputs: EdgeQuoteInput[] = companies
+    .map((c) => ({ symbol: c.symbol, companyId: c.companyId! }))
+    .filter((i) => !symbolsFilter || symbolsFilter.has(i.symbol));
 
   const indices = (universe as { indices?: Array<{ symbol: string; companyId?: string }> })
     .indices;
   if (indices) {
     for (const idx of indices) {
-      if (idx.companyId && !inputs.some((i) => i.symbol === idx.symbol)) {
+      if (
+        idx.companyId &&
+        !inputs.some((i) => i.symbol === idx.symbol) &&
+        (!symbolsFilter || symbolsFilter.has(idx.symbol))
+      ) {
         inputs.push({ symbol: idx.symbol, companyId: idx.companyId });
       }
     }
@@ -159,8 +187,9 @@ async function main(): Promise<void> {
         },
       });
 
+  const wantsIndex = !symbolsFilter || symbolsFilter.has("PSEI");
   let indexQuote: EodQuote | null = null;
-  if (!useYahoo) {
+  if (!useYahoo && wantsIndex) {
     console.log("Fetching PSEi from EDGE index summary...");
     indexQuote = await fetchPseiIndexQuote();
     if (indexQuote) {
@@ -192,7 +221,7 @@ async function main(): Promise<void> {
   }
 
   const totalCount = quotes.length + (indexQuote ? 1 : 0);
-  if (totalCount < MIN_QUOTES && !limit) {
+  if (totalCount < MIN_QUOTES && !limit && !symbolsFilter) {
     console.error(
       `Expected at least ${MIN_QUOTES} quotes, got ${totalCount}`,
     );
@@ -200,7 +229,11 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Only run when executed directly (tsx scripts/ingest-market-quotes.ts),
+// not when imported by a test for parseSymbolsFilter.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

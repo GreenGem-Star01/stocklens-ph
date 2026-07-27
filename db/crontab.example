@@ -4,5 +4,14 @@
 # EOD ingest — Mon–Fri (use 10 instead of 18 if VM timezone is UTC)
 0 18 * * 1-5 /var/www/stocklens-ph/db/cron.example.sh >> /var/log/stocklens-ingest.log 2>&1
 
+# Intraday dashboard refresh — every 2 min, Mon–Fri (use 1-7 instead of
+# 9-15 if VM timezone is UTC). Only the 6 fixed dashboard/featured
+# symbols (PSEI, BDO, JFC, ALI, TEL, SMPH) — NOT the full ~284-symbol
+# universe, which would be ~51,000 requests/day against an EDGE endpoint
+# scoped to once-daily EOD use. --respect-market-hours makes the script
+# itself no-op outside 9:30–15:30 Manila, so this coarse hourly cron
+# window is fine as-is. flock guards against overlapping runs.
+*/2 9-15 * * 1-5 flock -n /tmp/stocklens-intraday.lock -c "cd /var/www/stocklens-ph && npm run ingest:quotes -- --symbols=PSEI,BDO,JFC,ALI,TEL,SMPH --respect-market-hours" >> /var/log/stocklens-intraday.log 2>&1
+
 # PSE listing sync — Sunday 06:00
 0 6 * * 0 cd /var/www/stocklens-ph && npm run sync:pse >> /var/log/stocklens-sync.log 2>&1
