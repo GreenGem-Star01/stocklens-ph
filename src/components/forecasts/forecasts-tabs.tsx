@@ -26,12 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ForecastsTabSummary } from "@/components/forecasts/forecasts-tab-summary";
 import { allForecasts, modelPerformance } from "@/lib/data/forecasts";
-import {
-  FORECAST_DISCLAIMER,
-  isDownwardTrend,
-  isUpwardTrend,
-  tickerToPath,
-} from "@/lib/forecast";
+import { isDownwardTrend, isUpwardTrend, tickerToPath } from "@/lib/forecast";
 import type { StockForecast } from "@/lib/data/forecasts";
 
 function ForecastTable({
@@ -162,7 +157,6 @@ export function ForecastsTabs() {
             />
           </CardContent>
         </Card>
-        <p className="text-sm text-muted-foreground">{FORECAST_DISCLAIMER}</p>
       </TabsContent>
 
       <TabsContent value="upward" className="space-y-4">
@@ -183,7 +177,6 @@ export function ForecastsTabs() {
             />
           </CardContent>
         </Card>
-        <p className="text-sm text-muted-foreground">{FORECAST_DISCLAIMER}</p>
       </TabsContent>
 
       <TabsContent value="downward" className="space-y-4">
@@ -204,7 +197,6 @@ export function ForecastsTabs() {
             />
           </CardContent>
         </Card>
-        <p className="text-sm text-muted-foreground">{FORECAST_DISCLAIMER}</p>
       </TabsContent>
 
       <TabsContent value="performance" className="space-y-4">
@@ -273,7 +265,6 @@ export function ForecastsTabs() {
               stocks showing higher accuracy compared to more volatile sectors
               like Real Estate.
             </p>
-            <p className="text-muted-foreground">{FORECAST_DISCLAIMER}</p>
           </CardContent>
         </Card>
       </TabsContent>
