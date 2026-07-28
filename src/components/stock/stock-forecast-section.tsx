@@ -178,6 +178,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
           <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
             <ChartControl
               label="Time Range:"
+              ariaLabel="Forecast chart time range"
               value={range}
               onChange={onRangeChange}
               options={[
@@ -188,6 +189,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
             />
             <ChartControl
               label="Forecast:"
+              ariaLabel="Forecast horizon"
               value={horizon}
               onChange={onHorizonChange}
               options={[
@@ -197,6 +199,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
             />
             <ChartControl
               label="Model:"
+              ariaLabel="Forecast model"
               value={model}
               onChange={onModelChange}
               options={[
@@ -210,6 +213,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
             {paramOptions && param ? (
               <ChartControl
                 label={model === "ma" ? "Window:" : "Lookback:"}
+                ariaLabel={model === "ma" ? "Moving average window" : "Linear regression lookback"}
                 value={param}
                 onChange={onParamChange}
                 options={paramOptions}
@@ -251,12 +255,14 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
 
 function ChartControl({
   label,
+  ariaLabel,
   value,
   onChange,
   options,
   triggerClass = "sm:w-28",
 }: {
   label: string;
+  ariaLabel: string;
   value: string;
   onChange: (value: string) => void;
   options: [string, string][];
@@ -266,7 +272,7 @@ function ChartControl({
     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
       <span className="text-sm text-muted-foreground">{label}</span>
       <Select value={value} onValueChange={(v) => v && onChange(v)}>
-        <SelectTrigger className={cn("w-full", triggerClass)}>
+        <SelectTrigger className={cn("w-full", triggerClass)} aria-label={ariaLabel}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
