@@ -203,7 +203,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
                 ["naive", "Naive"],
                 ["ma", "Moving Avg"],
                 ["linear", "Linear Reg"],
-                ["lstm", "LSTM*"],
+                ["lstm", "LSTM"],
               ]}
               triggerClass="sm:w-32"
             />
@@ -242,14 +242,6 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
               : ""}
             . Not the same as the precomputed comparison table below, which
             always uses default settings.
-          </p>
-        ) : null}
-        {model === "lstm" ? (
-          <p className="mt-3 text-xs text-muted-foreground">
-            * This interactive chart approximates LSTM with Linear Regression
-            once you change any control above — real LSTM inference only runs
-            in the offline pipeline that produces the precomputed results in
-            the Models tab.
           </p>
         ) : null}
       </CardContent>

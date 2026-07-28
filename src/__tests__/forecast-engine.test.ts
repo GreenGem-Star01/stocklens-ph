@@ -4,6 +4,7 @@ import { walkForwardBacktest } from "@/lib/forecast/backtest";
 import { generateForecast } from "@/lib/forecast/generate";
 import {
   linearPredict,
+  lstmPredict,
   maPredict,
   naivePredict,
   predictWithModel,
@@ -52,6 +53,44 @@ describe("forecast models", () => {
     const metrics = walkForwardBacktest(bars, 7);
     expect(metrics.length).toBeGreaterThan(0);
     expect(metrics[0]?.mae).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// Regression coverage for a bug where the live forecast API silently
+// substituted Linear Regression for every "lstm" request — Vercel's Node
+// serverless runtime can't spawn the python3 subprocess the offline
+// ingestion pipeline uses, so lstmPredict is a from-scratch TypeScript
+// port of that same algorithm (services/forecast/forecast/lstm.py),
+// verified against the Python reference for a fixed input. These tests
+// pin the port's basic contract, and specifically that generateForecast
+// no longer routes "lstm" through the linear model.
+describe("lstm model", () => {
+  const trendingCloses = Array.from({ length: 60 }, (_, i) => 100 + i * 0.3);
+
+  it("returns exactly horizonDays predictions", () => {
+    expect(lstmPredict(trendingCloses, 7)).toHaveLength(7);
+    expect(lstmPredict(trendingCloses, 30)).toHaveLength(30);
+  });
+
+  it("falls back to repeating the last close for too-short series", () => {
+    expect(lstmPredict([42], 3)).toEqual([42, 42, 42]);
+    expect(lstmPredict([], 3)).toEqual([0, 0, 0]);
+  });
+
+  it("is deterministic for the same input", () => {
+    expect(lstmPredict(trendingCloses, 7)).toEqual(
+      lstmPredict(trendingCloses, 7),
+    );
+  });
+
+  it("generateForecast('lstm') differs from generateForecast('linear')", () => {
+    const bars = syntheticBars(90);
+    const lstmPoints = generateForecast(bars, "lstm", 7);
+    const linearPoints = generateForecast(bars, "linear", 7);
+    const lstmForecast = lstmPoints.find((p) => p.forecast != null)?.forecast;
+    const linearForecast = linearPoints.find((p) => p.forecast != null)
+      ?.forecast;
+    expect(lstmForecast).not.toEqual(linearForecast);
   });
 });
 

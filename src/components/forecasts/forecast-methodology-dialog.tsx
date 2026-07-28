@@ -32,7 +32,7 @@ const MODELS: { name: string; blurb: string }[] = [
   {
     name: "LSTM",
     blurb:
-      "A neural network trained on historical price sequences. It runs in an offline batch pipeline — the Model Comparison tab shows those precomputed results. The interactive chart above approximates LSTM with Linear Regression once you touch any of its controls.",
+      "A small recurrent sequence model (8 hidden units) fit fresh on each request — not a large pretrained network. It's the same algorithm the offline pipeline uses for the Model Comparison tab's precomputed results, just running in-process here instead of as a separate batch job.",
   },
 ];
 

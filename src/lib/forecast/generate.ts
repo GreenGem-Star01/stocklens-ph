@@ -1,4 +1,4 @@
-import { predictWithModel } from "@/lib/forecast/models";
+import { lstmPredict, predictWithModel } from "@/lib/forecast/models";
 import type { BaselineModel, ForecastModel } from "@/lib/forecast/types";
 import type { MarketBar } from "@/lib/market/types";
 import type { ChartPoint } from "@/lib/types/stock-analysis";
@@ -38,7 +38,7 @@ export function generateForecast(
 
   let futurePrices: number[];
   if (model === "lstm") {
-    futurePrices = predictWithModel("linear", closes, horizonDays);
+    futurePrices = lstmPredict(closes, horizonDays);
   } else {
     futurePrices = predictWithModel(model as BaselineModel, closes, horizonDays, param);
   }
