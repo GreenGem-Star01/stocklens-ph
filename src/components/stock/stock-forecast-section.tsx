@@ -20,7 +20,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { tickerToPath } from "@/lib/forecast";
 import type { ModelComparisonRow } from "@/lib/forecast/types";
+import { useSettingsStore } from "@/lib/stores/settings-store";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
+import { cn } from "@/lib/utils";
 
 // Presets, not free numeric input — matches every other forecast control
 // here being a Select over a fixed option set. Values mirror
@@ -62,11 +64,19 @@ function ChartSkeleton() {
 }
 
 export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) {
-  const [range, setRange] = useState("30d");
-  const [horizon, setHorizon] = useState("7d");
-  const [model, setModel] = useState("linear");
+  // Read once at mount — these mirror Settings → Forecast Preferences, but
+  // the chart's own controls are the source of truth once a user touches them.
+  const [range, setRange] = useState(
+    () => useSettingsStore.getState().defaultTimeRange,
+  );
+  const [horizon, setHorizon] = useState(
+    () => useSettingsStore.getState().defaultHorizon,
+  );
+  const [model, setModel] = useState(
+    () => useSettingsStore.getState().preferredModel,
+  );
   const [param, setParam] = useState<string | null>(
-    DEFAULT_PARAM_FOR_MODEL.linear ?? null,
+    () => DEFAULT_PARAM_FOR_MODEL[model] ?? null,
   );
   const [chartAnalysis, setChartAnalysis] = useState(analysis);
   const [customPerformance, setCustomPerformance] =
@@ -165,7 +175,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
               Solid line shows historical data. Dashed line shows AI forecast.
             </CardDescription>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
             <ChartControl
               label="Time Range:"
               value={range}
@@ -193,9 +203,9 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
                 ["naive", "Naive"],
                 ["ma", "Moving Avg"],
                 ["linear", "Linear Reg"],
-                ["lstm", "LSTM"],
+                ["lstm", "LSTM*"],
               ]}
-              triggerClass="w-32"
+              triggerClass="sm:w-32"
             />
             {paramOptions && param ? (
               <ChartControl
@@ -203,7 +213,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
                 value={param}
                 onChange={onParamChange}
                 options={paramOptions}
-                triggerClass="w-32"
+                triggerClass="sm:w-32"
               />
             ) : null}
           </div>
@@ -234,6 +244,14 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
             always uses default settings.
           </p>
         ) : null}
+        {model === "lstm" ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            * This interactive chart approximates LSTM with Linear Regression
+            once you change any control above — real LSTM inference only runs
+            in the offline pipeline that produces the precomputed results in
+            the Models tab.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -244,7 +262,7 @@ function ChartControl({
   value,
   onChange,
   options,
-  triggerClass = "w-28",
+  triggerClass = "sm:w-28",
 }: {
   label: string;
   value: string;
@@ -253,10 +271,10 @@ function ChartControl({
   triggerClass?: string;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
       <span className="text-sm text-muted-foreground">{label}</span>
       <Select value={value} onValueChange={(v) => v && onChange(v)}>
-        <SelectTrigger className={triggerClass}>
+        <SelectTrigger className={cn("w-full", triggerClass)}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
