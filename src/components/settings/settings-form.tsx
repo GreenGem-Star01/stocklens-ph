@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Bell, ChartLine, Database, Palette, Shield } from "lucide-react";
+import { ChartLine, Database, Palette, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,20 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { ThemeModeSetting } from "@/components/settings/theme-mode-setting";
 import { FORECAST_DISCLAIMER } from "@/lib/forecast";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { useSettingsStore, type SettingsState } from "@/lib/stores/settings-store";
+
+function snapshotSettings(state: SettingsState) {
+  return {
+    defaultHorizon: state.defaultHorizon,
+    preferredModel: state.preferredModel,
+    showModelComparison: state.showModelComparison,
+    displayAiInsights: state.displayAiInsights,
+    defaultTimeRange: state.defaultTimeRange,
+    autoRefresh: state.autoRefresh,
+    showDisclaimerBanners: state.showDisclaimerBanners,
+    theme: state.theme,
+  };
+}
 
 function SettingRow({
   label,
@@ -51,17 +63,16 @@ function SettingRow({
 
 export function SettingsForm() {
   const settings = useSettingsStore();
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = () => {
-    toast.success("Settings saved.");
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   const handleReset = () => {
+    const previous = snapshotSettings(settings);
     settings.reset();
-    toast.message("Settings reset to defaults.");
+    toast.message("Settings reset to defaults.", {
+      action: {
+        label: "Undo",
+        onClick: () => settings.setAll(previous),
+      },
+    });
   };
 
   return (
@@ -69,7 +80,7 @@ export function SettingsForm() {
       <div className="space-y-1">
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
-          Preferences for display, forecasts, and notifications.
+          Preferences for appearance, forecasts, and disclaimers.
         </p>
       </div>
 
@@ -91,45 +102,11 @@ export function SettingsForm() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            <CardTitle>Notifications</CardTitle>
-          </div>
-          <CardDescription>
-            Configure how you receive alerts and updates
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <SettingRow
-            label="Forecast Updates"
-            description="Get notified when new forecasts are available for watchlist stocks"
-            checked={settings.forecastUpdates}
-            onCheckedChange={(v) => settings.setField("forecastUpdates", v)}
-          />
-          <Separator />
-          <SettingRow
-            label="Price Alerts"
-            description="Receive alerts when stock prices hit significant levels"
-            checked={settings.priceAlerts}
-            onCheckedChange={(v) => settings.setField("priceAlerts", v)}
-          />
-          <Separator />
-          <SettingRow
-            label="Market News"
-            description="Get updates on PSE disclosures and market-moving events"
-            checked={settings.marketNews}
-            onCheckedChange={(v) => settings.setField("marketNews", v)}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
             <ChartLine className="h-5 w-5 text-primary" />
             <CardTitle>Forecast Preferences</CardTitle>
           </div>
           <CardDescription>
-            Customize forecast display and model settings
+            Defaults applied when you open a stock&apos;s forecast chart
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -143,9 +120,7 @@ export function SettingsForm() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="3d">3 days</SelectItem>
                 <SelectItem value="7d">7 days</SelectItem>
-                <SelectItem value="14d">14 days</SelectItem>
                 <SelectItem value="30d">30 days</SelectItem>
               </SelectContent>
             </Select>
@@ -194,7 +169,7 @@ export function SettingsForm() {
             <CardTitle>Data & Display</CardTitle>
           </div>
           <CardDescription>
-            Configure data sources and chart settings
+            Chart range default and live price refresh behavior
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -211,30 +186,13 @@ export function SettingsForm() {
                 <SelectItem value="7d">7 days</SelectItem>
                 <SelectItem value="30d">30 days</SelectItem>
                 <SelectItem value="90d">90 days</SelectItem>
-                <SelectItem value="1y">1 year</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Separator />
-          <div className="space-y-2">
-            <Label>Currency Display</Label>
-            <Select
-              value={settings.currencyDisplay}
-              onValueChange={(v) => v && settings.setField("currencyDisplay", v)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="php">Philippine Peso (₱)</SelectItem>
-                <SelectItem value="usd">US Dollar ($)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <Separator />
           <SettingRow
             label="Auto-refresh Data"
-            description="Automatically update prices during market hours"
+            description="Automatically update prices during market hours while the dashboard is open"
             checked={settings.autoRefresh}
             onCheckedChange={(v) => settings.setField("autoRefresh", v)}
           />
@@ -288,14 +246,13 @@ export function SettingsForm() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-end gap-3">
-        {saved ? (
-          <span className="text-sm text-trend-up">Settings saved</span>
-        ) : null}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Changes apply immediately — no need to save.
+        </p>
         <Button variant="outline" onClick={handleReset}>
           Reset to Defaults
         </Button>
-        <Button onClick={handleSave}>Save Changes</Button>
       </div>
     </>
   );

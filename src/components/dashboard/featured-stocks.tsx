@@ -18,6 +18,7 @@ import { TrendBadge } from "@/components/ui/trend-badge";
 import { useMarketSession } from "@/lib/hooks/use-market-session";
 import { featuredStocks as defaultFeatured } from "@/lib/data/dashboard";
 import { tickerToPath } from "@/lib/forecast";
+import { useSettingsStore } from "@/lib/stores/settings-store";
 import type { FeaturedStock } from "@/lib/types/stock";
 
 const POLL_INTERVAL_MS = 60_000;
@@ -81,7 +82,8 @@ export function FeaturedStocks({
   liveQuotesAvailable?: boolean;
 }) {
   const { status } = useMarketSession();
-  const isLive = liveQuotesAvailable && status === "open";
+  const autoRefresh = useSettingsStore((s) => s.autoRefresh);
+  const isLive = liveQuotesAvailable && autoRefresh && status === "open";
   const [stocks, setStocks] = useState(initialStocks);
 
   useEffect(() => {
