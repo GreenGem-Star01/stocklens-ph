@@ -1,7 +1,7 @@
 /**
  * Baseline forecast + walk-forward metrics ingest → market_forecasts_latest / market_model_metrics
  * Run: npm run ingest:forecasts
- * Flags: --write-snapshot, --probe=BDO, --verbose
+ * Flags: --write-snapshot, --probe=BDO, --seeds, --verbose
  */
 import "dotenv/config";
 import { join } from "node:path";
@@ -13,6 +13,7 @@ import {
   FORECAST_HORIZONS,
   type ForecastModel,
 } from "../src/lib/forecast/types";
+import { ALL_STOCK_SEEDS } from "../src/lib/data/stock-seeds";
 import { closeIngestPool, getIngestPool } from "./lib/db-ingest";
 import { assertValidDatabaseUrl, loadMarketEnv } from "./lib/load-market-env";
 import { loadIngestSymbols } from "./lib/universe-symbols";
@@ -193,12 +194,20 @@ async function main(): Promise<void> {
   const verbose = process.argv.includes("--verbose");
   const writeSnapshot = process.argv.includes("--write-snapshot");
   const runLstm = process.argv.includes("--lstm");
+  const seedsOnly = process.argv.includes("--seeds");
   const probe = parseProbeSymbol();
   const concurrency = parseConcurrency();
 
+  // --seeds scopes to the ~30 demo/blue-chip tickers the app actually shows
+  // full analysis for (dashboard, watchlist, forecasts page, Insights tab) —
+  // meaningful for --lstm specifically, since each symbol spawns a python3
+  // subprocess (up to 120s) rather than the near-instant baseline models,
+  // so a full ~250+ symbol universe run isn't a fit for a routine CI job.
   const symbols = probe
     ? [probe]
-    : loadIngestSymbols();
+    : seedsOnly
+      ? ALL_STOCK_SEEDS.map((s) => s.ticker.replace(/\.PS$/i, "").toUpperCase())
+      : loadIngestSymbols();
 
   console.log(
     `Computing forecasts for ${symbols.length} symbol(s) (concurrency ${concurrency})...`,

@@ -1,0 +1,42 @@
+# Refresh LSTM forecasts + metrics in market_forecasts_latest /
+# market_model_metrics for the demo/blue-chip tickers only (--seeds) — the
+# ones actually shown with full analysis in the app. Unlike the baseline
+# models (naive/ma/linear, near-instant JS math), each LSTM symbol spawns
+# a python3 subprocess with 30 training epochs, so this is scoped and runs
+# weekly rather than the baseline snapshot's weekday schedule. Skips the
+# run (not a hard failure) if DATABASE_URL isn't configured, so forking or
+# testing this workflow is safe.
+
+name: Market forecasts LSTM refresh
+
+on:
+  schedule:
+    - cron: "0 12 * * 0"
+  workflow_dispatch:
+
+jobs:
+  lstm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: npm ci
+      - name: Check DATABASE_URL is configured
+        id: has-secrets
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::DATABASE_URL not set — skipping LSTM forecasts refresh"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - run: npm run ingest:forecasts:lstm -- --seeds --verbose
+        if: steps.has-secrets.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
