@@ -6,35 +6,28 @@ import { persist } from "zustand/middleware";
 import type { ThemeMode } from "@/lib/theme";
 
 export type SettingsState = {
-  forecastUpdates: boolean;
-  priceAlerts: boolean;
-  marketNews: boolean;
   defaultHorizon: string;
   preferredModel: string;
   showModelComparison: boolean;
   displayAiInsights: boolean;
   defaultTimeRange: string;
-  currencyDisplay: string;
   autoRefresh: boolean;
   showDisclaimerBanners: boolean;
   theme: ThemeMode;
-  setField: <K extends keyof Omit<SettingsState, "setField" | "reset">>(
+  setField: <K extends keyof Omit<SettingsState, "setField" | "reset" | "setAll">>(
     key: K,
     value: SettingsState[K] | string,
   ) => void;
+  setAll: (values: Omit<SettingsState, "setField" | "reset" | "setAll">) => void;
   reset: () => void;
 };
 
-const defaults: Omit<SettingsState, "setField" | "reset"> = {
-  forecastUpdates: true,
-  priceAlerts: true,
-  marketNews: false,
+const defaults: Omit<SettingsState, "setField" | "reset" | "setAll"> = {
   defaultHorizon: "7d",
   preferredModel: "lstm",
   showModelComparison: true,
   displayAiInsights: true,
   defaultTimeRange: "30d",
-  currencyDisplay: "php",
   autoRefresh: true,
   showDisclaimerBanners: true,
   theme: "light",
@@ -50,16 +43,26 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       ...defaults,
       setField: (key, value) => set({ [key]: value }),
+      setAll: (values) => set(values),
       reset: () => set(defaults),
     }),
     {
       name: "stocklens-settings",
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
-        const state = { ...defaults, ...(persisted as Partial<SettingsState>) };
+        const legacy = persisted as Partial<SettingsState> & PersistedSettingsV1;
+        // Rebuild from known keys only — drops fields retired in v3
+        // (forecastUpdates/priceAlerts/marketNews/currencyDisplay), which
+        // had no consumer anywhere in the app and only misled users into
+        // thinking they controlled real behavior.
+        const state = { ...defaults };
+        for (const key of Object.keys(defaults) as (keyof typeof defaults)[]) {
+          if (key in legacy && legacy[key] !== undefined) {
+            (state as Record<string, unknown>)[key] = legacy[key];
+          }
+        }
 
         if (version < 2) {
-          const legacy = persisted as PersistedSettingsV1;
           if (legacy.theme && ["light", "dark", "system"].includes(legacy.theme)) {
             state.theme = legacy.theme;
           } else if (typeof legacy.darkMode === "boolean") {

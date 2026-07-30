@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ForecastDisclaimer } from "@/components/dashboard/forecast-disclaimer";
 import { ForecastsSummary } from "@/components/forecasts/forecasts-summary";
 import { ForecastsTabs } from "@/components/forecasts/forecasts-tabs";
 import { APP_PAGE_CLASS } from "@/lib/layout";
@@ -24,6 +25,7 @@ export default function ForecastsPage() {
       </div>
       <ForecastsSummary />
       <ForecastsTabs />
+      <ForecastDisclaimer />
     </div>
   );
 }

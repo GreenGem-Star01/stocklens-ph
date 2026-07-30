@@ -12,7 +12,7 @@ type RouteContext = { params: Promise<{ ticker: string }> };
 export async function GET(request: Request, context: RouteContext) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous";
-  const limit = checkRateLimit(`stock-analysis:${ip}`);
+  const limit = await checkRateLimit(`stock-analysis:${ip}`);
   if (!limit.ok) {
     return NextResponse.json(
       { error: "Too many requests" },

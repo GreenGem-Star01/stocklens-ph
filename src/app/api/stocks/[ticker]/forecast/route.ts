@@ -10,10 +10,12 @@ import type { BaselineModel, ForecastModel } from "@/lib/forecast/types";
 import { getDailyBars } from "@/lib/market/bars-repository";
 import { getLatestQuotes } from "@/lib/market/quotes-repository";
 import { tickerToSymbol } from "@/lib/market/symbol";
+import { BAR_RANGE_DAYS, type BarRange } from "@/lib/market/types";
 import { buildForecastFromAnalysis } from "@/lib/services/forecast-service";
 import {
   forecastHorizonSchema,
   forecastModelSchema,
+  historyRangeSchema,
   tickerPathSchema,
 } from "@/lib/validation/ticker";
 
@@ -45,7 +47,7 @@ function parseTunableParam(
 export async function GET(request: Request, context: RouteContext) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous";
-  const limit = checkRateLimit(`stock-forecast:${ip}`);
+  const limit = await checkRateLimit(`stock-forecast:${ip}`);
   if (!limit.ok) {
     return NextResponse.json(
       { error: "Too many requests" },
@@ -66,7 +68,10 @@ export async function GET(request: Request, context: RouteContext) {
   const model = forecastModelSchema.safeParse(
     searchParams.get("model") ?? "linear",
   );
-  if (!horizon.success || !model.success) {
+  // Default "90d" matches CHART_HISTORY_DAYS (generate.ts), preserving the
+  // existing chart window for any caller that doesn't pass a range.
+  const range = historyRangeSchema.safeParse(searchParams.get("range") ?? "90d");
+  if (!horizon.success || !model.success || !range.success) {
     return NextResponse.json({ error: "Invalid query parameters" }, { status: 400 });
   }
 
@@ -78,9 +83,11 @@ export async function GET(request: Request, context: RouteContext) {
   const quotes = await getLatestQuotes([symbol]);
   const quote = quotes.get(tickerToSymbol(symbol));
   const bars = await getDailyBars(symbol, "1y");
+  const historyDays = BAR_RANGE_DAYS[range.data as BarRange];
   const analysis = await buildMarketAnalysis(symbol, quote, bars, {
     model: model.data as ForecastModel,
     horizon: horizon.data,
+    historyDays,
   });
 
   if (!analysis) {
@@ -100,7 +107,13 @@ export async function GET(request: Request, context: RouteContext) {
   let chartData = analysis.chartData;
   let customPerformance = null;
   if (param !== undefined && bars.length >= MIN_BARS_FOR_LIVE_TUNING) {
-    chartData = generateForecast(bars, model.data as ForecastModel, horizonDays, 90, param);
+    chartData = generateForecast(
+      bars,
+      model.data as ForecastModel,
+      horizonDays,
+      historyDays,
+      param,
+    );
     const customModel = model.data as BaselineModel;
     const metrics = walkForwardBacktest(bars, horizonDays, [customModel], param);
     customPerformance = metricsToComparisonRows(metrics)[0] ?? null;
@@ -111,6 +124,7 @@ export async function GET(request: Request, context: RouteContext) {
       ...forecast,
       horizon: horizon.data,
       model: model.data,
+      range: range.data,
       param: param ?? null,
       chartData,
       performance: analysis.performance,

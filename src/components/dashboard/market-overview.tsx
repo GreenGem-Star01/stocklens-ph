@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,11 +9,32 @@ import { LiveIndicator } from "@/components/ui/live-indicator";
 import { PriceChange } from "@/components/ui/price-change";
 import { useMarketSession } from "@/lib/hooks/use-market-session";
 import { marketOverview as defaultOverview } from "@/lib/data/dashboard";
+import { directionFromChangeString, type PriceDirection } from "@/lib/market/change-direction";
+import { useSettingsStore } from "@/lib/stores/settings-store";
+import { cn } from "@/lib/utils";
 
 type MarketOverviewData = typeof defaultOverview;
 
 const PSEI_TICKER = "PSEI.PS";
 const POLL_INTERVAL_MS = 60_000;
+
+// Plain utility classes, not the `.trend-chip-*` helpers in globals.css —
+// Badge's default variant (`bg-primary`) is also a utility, and utilities
+// always win over `@layer components` classes regardless of source order,
+// so `.trend-chip-*` silently loses to it. `variant="outline"` below drops
+// the conflicting default background/text so these take effect (same
+// pattern TrendBadge already uses successfully).
+const trendChipClass: Record<PriceDirection, string> = {
+  up: "border-trend-up/30 bg-trend-up text-trend-up-foreground",
+  down: "border-trend-down/30 bg-trend-down text-trend-down-foreground",
+  flat: "border-trend-mixed/40 bg-trend-mixed text-trend-mixed-foreground",
+};
+
+const trendChipIcon: Record<PriceDirection, typeof ArrowUpRight> = {
+  up: ArrowUpRight,
+  down: ArrowDownRight,
+  flat: Minus,
+};
 
 function OverviewStat({
   ticker,
@@ -40,9 +61,12 @@ export function MarketOverview({
   liveQuotesAvailable?: boolean;
 }) {
   const { status } = useMarketSession();
-  const isLive = liveQuotesAvailable && status === "open";
+  const autoRefresh = useSettingsStore((s) => s.autoRefresh);
+  const isLive = liveQuotesAvailable && autoRefresh && status === "open";
   const [pseiValue, setPseiValue] = useState(data.pseiValue);
   const [pseiChange, setPseiChange] = useState(data.pseiChange);
+  const pseiDirection = directionFromChangeString(pseiChange);
+  const PseiTrendIcon = trendChipIcon[pseiDirection];
 
   useEffect(() => {
     if (!isLive) return;
@@ -91,8 +115,11 @@ export function MarketOverview({
               <span className="tabular-nums text-2xl font-semibold">
                 {pseiValue}
               </span>
-              <Badge className="trend-chip-up hover:opacity-90">
-                <ArrowUpRight className="mr-1 h-3 w-3" aria-hidden />
+              <Badge
+                variant="outline"
+                className={cn(trendChipClass[pseiDirection], "hover:opacity-90")}
+              >
+                <PseiTrendIcon className="mr-1 h-3 w-3" aria-hidden />
                 {pseiChange}
               </Badge>
             </div>
@@ -130,7 +157,13 @@ export function MarketOverview({
             <CardDescription>Market Status</CardDescription>
           </CardHeader>
           <CardContent>
-            <Badge className="trend-chip-up hover:opacity-90">
+            <Badge
+              variant="outline"
+              className={cn(
+                trendChipClass[status === "open" ? "up" : "flat"],
+                "hover:opacity-90",
+              )}
+            >
               {data.marketStatus}
             </Badge>
             <p className="mt-1 text-xs text-muted-foreground">

@@ -51,7 +51,10 @@ test.describe("smoke", () => {
       /Asia Amalgamated/i,
     );
     await expect(page.getByText("AAA.PS")).toBeVisible();
+    // "Technical" is the default active tab on the stock page.
     await expect(page.getByText("Technical Analysis", { exact: true })).toBeVisible();
+    // The forecast price chart lives under the "Forecast" tab.
+    await page.getByRole("tab", { name: "Forecast" }).click();
     await expect(
       page.getByRole("img", { name: /Price chart for AAA\.PS/i }),
     ).toBeVisible();
@@ -72,6 +75,8 @@ test.describe("smoke", () => {
     await page.goto("/stock/bdo");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(/BDO/i);
     await expect(page.getByText("BDO.PS")).toBeVisible();
+    // The forecast price chart lives under the "Forecast" tab.
+    await page.getByRole("tab", { name: "Forecast" }).click();
     await expect(
       page.getByRole("img", {
         name: /Price chart for BDO\.PS/i,

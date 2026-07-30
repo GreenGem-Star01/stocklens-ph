@@ -27,7 +27,7 @@ npm run prisma:migrate
 npm run prisma:generate
 ```
 
-Tables: `market_quotes_latest`, `market_bars_daily`, `market_forecasts_latest`, `market_model_metrics`.
+Tables: `market_quotes_latest`, `market_bars_daily`, `market_forecasts_latest`, `market_model_metrics`, `rate_limits`.
 
 Apply forecast tables if migrating manually:
 

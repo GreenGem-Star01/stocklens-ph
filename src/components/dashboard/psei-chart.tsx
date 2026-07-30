@@ -48,7 +48,13 @@ export function PseiChart({ data = defaultPseiData }: { data?: PseiDataPoint[] }
               to load daily bars.
             </p>
           ) : mounted ? (
-            <ResponsiveContainer width="100%" height={288} minWidth={0} minHeight={200}>
+            <ResponsiveContainer
+              width="100%"
+              height={288}
+              minWidth={0}
+              minHeight={200}
+              initialDimension={{ width: 400, height: 288 }}
+            >
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,9 +30,20 @@ import { useWatchlistStore } from "@/lib/stores/watchlist-store";
 export function WatchlistTable() {
   const stocks = useWatchlistStore((s) => s.stocks);
   const removeStock = useWatchlistStore((s) => s.removeStock);
+  const addStock = useWatchlistStore((s) => s.addStock);
+
+  const handleRemove = (ticker: string) => {
+    removeStock(ticker);
+    toast.message(`Removed ${ticker} from watchlist.`, {
+      action: {
+        label: "Undo",
+        onClick: () => addStock(ticker),
+      },
+    });
+  };
 
   return (
-    <Card className="card-interactive">
+    <Card className="hidden card-interactive md:block">
       <CardHeader>
         <CardTitle>Watchlist Details</CardTitle>
         <CardDescription>Complete view of your tracked stocks</CardDescription>
@@ -85,15 +97,7 @@ export function WatchlistTable() {
                       size="sm"
                       className="text-destructive hover:text-destructive"
                       aria-label={`Remove ${stock.ticker}`}
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Remove ${stock.ticker} from your watchlist?`,
-                          )
-                        ) {
-                          removeStock(stock.ticker);
-                        }
-                      }}
+                      onClick={() => handleRemove(stock.ticker)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

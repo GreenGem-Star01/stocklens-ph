@@ -278,7 +278,11 @@ export function StockDirectory({
   }
 
   useEffect(() => {
-    syncUrl({ query, sector, subsector });
+    // Debounced — without this, every keystroke fired a router.replace().
+    const id = setTimeout(() => {
+      syncUrl({ query, sector, subsector });
+    }, 300);
+    return () => clearTimeout(id);
   }, [query, sector, subsector, syncUrl]);
 
   const equityCount = getEquityDirectoryCount();
@@ -309,22 +313,28 @@ export function StockDirectory({
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-0 z-10 -mx-4 space-y-3 border-b bg-background/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+      {/* Only the search box stays pinned on mobile — the full filter panel
+          (selects + tier/kind chips + count) used to stick together and ate
+          ~36% of a phone viewport once scrolled, leaving barely any room
+          for results. */}
+      <div className="sticky top-0 z-10 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+        <div className="relative min-w-0">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search ticker, company, sector..."
+            className="pl-9"
+            aria-label="Search stocks"
+          />
+        </div>
+      </div>
+      <div className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row">
-          <div className="relative min-w-0 flex-1">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search ticker, company, sector..."
-              className="pl-9"
-              aria-label="Search stocks"
-            />
-          </div>
           <Select
             value={sector}
             onValueChange={(v) => {
@@ -384,6 +394,7 @@ export function StockDirectory({
               type="button"
               variant="outline"
               size="sm"
+              aria-pressed={tier === chip.id}
               className={cn(tier === chip.id && "border-primary bg-primary/10")}
               onClick={() => setTier(chip.id)}
             >
@@ -398,6 +409,7 @@ export function StockDirectory({
               type="button"
               variant="outline"
               size="sm"
+              aria-pressed={kind === chip.id}
               className={cn(kind === chip.id && "border-primary bg-primary/10")}
               onClick={() => setKind(chip.id)}
             >

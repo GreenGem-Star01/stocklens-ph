@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -20,6 +21,7 @@ import {
 import { tickerToPath } from "@/lib/forecast";
 import type { IndicatorPoint } from "@/lib/market/indicators";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
+import type { TechnicalPanelKey } from "@/components/stock/stock-technical-chart";
 
 const StockTechnicalChart = dynamic(
   () =>
@@ -34,6 +36,13 @@ const StockTechnicalChart = dynamic(
   },
 );
 
+const PANEL_OPTIONS: { key: TechnicalPanelKey; label: string }[] = [
+  { key: "price", label: "Price + SMA" },
+  { key: "volume", label: "Volume" },
+  { key: "rsi", label: "RSI" },
+  { key: "macd", label: "MACD" },
+];
+
 export function StockTechnicalSection({
   analysis,
 }: {
@@ -42,7 +51,21 @@ export function StockTechnicalSection({
   const [range, setRange] = useState("90d");
   const [points, setPoints] = useState<IndicatorPoint[]>([]);
   const [loadedRange, setLoadedRange] = useState<string | null>(null);
+  const [visiblePanels, setVisiblePanels] = useState<Set<TechnicalPanelKey>>(
+    () => new Set(PANEL_OPTIONS.map((p) => p.key)),
+  );
   const loading = loadedRange !== range;
+
+  const togglePanel = (key: TechnicalPanelKey) => {
+    setVisiblePanels((prev) => {
+      // Always keep at least one panel visible.
+      if (prev.has(key) && prev.size === 1) return prev;
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -87,11 +110,30 @@ export function StockTechnicalSection({
         </div>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Show:</span>
+          {PANEL_OPTIONS.map(({ key, label }) => {
+            const active = visiblePanels.has(key);
+            return (
+              <Button
+                key={key}
+                type="button"
+                size="sm"
+                variant={active ? "secondary" : "outline"}
+                aria-pressed={active}
+                onClick={() => togglePanel(key)}
+              >
+                {label}
+              </Button>
+            );
+          })}
+        </div>
         <div className="relative">
           <StockTechnicalChart
             points={points}
             isIndex={isIndex}
             forecastPoints={analysis.chartData}
+            visiblePanels={visiblePanels}
           />
           {loading ? (
             <div

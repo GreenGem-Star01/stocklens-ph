@@ -74,3 +74,101 @@ export function predictWithModel(
       return naivePredict(closes, horizonDays);
   }
 }
+
+/**
+ * Single-layer LSTM-flavored cell, ported line-for-line from
+ * services/forecast/forecast/lstm.py — the same script the offline
+ * `--lstm` ingestion pipeline runs via a python3 subprocess. Deliberately
+ * simplistic (only wx is trained; wh never updates; no real gate
+ * mechanics) — that mirrors the Python reference intentionally rather
+ * than "improving" it, so this stays the same model, just runnable
+ * in-process. That matters because Vercel's Node serverless runtime can't
+ * spawn python3, so this was previously silently substituted with Linear
+ * Regression on every live request.
+ */
+class TinyLstm {
+  private readonly hiddenSize: number;
+  private wh: number[][];
+  private wx: number[];
+  private h: number[];
+
+  constructor(hiddenSize = 8) {
+    this.hiddenSize = hiddenSize;
+    this.wh = Array.from({ length: hiddenSize }, (_, i) =>
+      Array.from({ length: hiddenSize }, (_, j) => 0.01 * (i + j)),
+    );
+    this.wx = Array.from({ length: hiddenSize }, () => 0.01);
+    this.h = Array.from({ length: hiddenSize }, () => 0);
+  }
+
+  private step(x: number): number {
+    const newH = this.h.map((_, i) => {
+      let s = this.wx[i]! * x;
+      for (let j = 0; j < this.hiddenSize; j++) {
+        s += this.wh[i]![j]! * this.h[j]!;
+      }
+      return Math.tanh(s);
+    });
+    this.h = newH;
+    return this.h.reduce((a, b) => a + b, 0) / this.h.length;
+  }
+
+  private fit(series: number[], epochs = 30): void {
+    if (series.length < 10) return;
+    const mean = series.reduce((a, b) => a + b, 0) / series.length;
+    const variance =
+      series.reduce((a, b) => a + (b - mean) ** 2, 0) / series.length;
+    const std = Math.sqrt(variance) || 1;
+    const norm = series.map((x) => (x - mean) / std);
+    const lr = 0.05;
+
+    for (let epoch = 0; epoch < epochs; epoch++) {
+      this.h = Array.from({ length: this.hiddenSize }, () => 0);
+      for (let t = 0; t < norm.length - 1; t++) {
+        const pred = this.step(norm[t]!);
+        const err = norm[t + 1]! - pred;
+        for (let i = 0; i < this.hiddenSize; i++) {
+          this.wx[i]! += lr * err * norm[t]!;
+        }
+      }
+    }
+  }
+
+  predict(series: number[], horizon: number): number[] {
+    if (series.length < 2) {
+      const last = series.at(-1) ?? 0;
+      return Array.from({ length: horizon }, () => last);
+    }
+
+    this.fit(series);
+    const work = [...series];
+    const out: number[] = [];
+    for (let step = 0; step < horizon; step++) {
+      const window = work.slice(-20);
+      const mean = window.reduce((a, b) => a + b, 0) / window.length;
+      const variance =
+        window.reduce((a, b) => a + (b - mean) ** 2, 0) / window.length;
+      const std = Math.sqrt(variance) || 1;
+      const last = work.at(-1)!;
+      const x = (last - mean) / std;
+      const delta = this.step(x) * std;
+      const next = Math.max(last + delta * 0.3, 0.01);
+      const rounded = Math.round(next * 10000) / 10000;
+      out.push(rounded);
+      work.push(rounded);
+    }
+    return out;
+  }
+}
+
+/**
+ * Live single-shot LSTM forecast for the interactive stock chart. A fresh
+ * model is fit and predicted once per call — not the same use case as
+ * walk-forward backtesting, which stays baseline-model-only in
+ * backtest.ts since refitting 30 epochs per backtest step would be too
+ * slow for a request (that's also why predictWithModel's type excludes
+ * "lstm" — this is intentionally a separate, narrower entry point).
+ */
+export function lstmPredict(closes: number[], horizonDays: number): number[] {
+  return new TinyLstm().predict(closes, horizonDays);
+}

@@ -22,6 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSettingsStore } from "@/lib/stores/settings-store";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
 
 const metricGlossary: Record<string, string> = {
@@ -47,6 +48,9 @@ function MetricHead({ label }: { label: keyof typeof metricGlossary }) {
 }
 
 export function StockModelComparison({ analysis }: { analysis: StockAnalysis }) {
+  const show = useSettingsStore((s) => s.showModelComparison);
+  if (!show) return null;
+
   return (
     <Card>
       <CardHeader>

@@ -2,6 +2,7 @@
 
 import { AlertCircle } from "lucide-react";
 
+import { ForecastMethodologyDialog } from "@/components/forecasts/forecast-methodology-dialog";
 import { FORECAST_DISCLAIMER } from "@/lib/forecast";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 
@@ -10,12 +11,13 @@ export function ForecastDisclaimer() {
   if (!show) return null;
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-4">
       <AlertCircle
-        className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground"
+        className="h-5 w-5 shrink-0 text-muted-foreground"
         aria-hidden
       />
-      <p className="text-sm text-muted-foreground">{FORECAST_DISCLAIMER}</p>
+      <p className="flex-1 text-sm text-muted-foreground">{FORECAST_DISCLAIMER}</p>
+      <ForecastMethodologyDialog />
     </div>
   );
 }

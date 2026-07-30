@@ -34,7 +34,13 @@ export function StockForecastChart({ analysis }: { analysis: StockAnalysis }) {
       aria-label={`Price chart for ${analysis.info.ticker} with historical and forecast lines`}
     >
       <ChartLegend />
-      <ResponsiveContainer width="100%" height={460} minWidth={0} minHeight={320}>
+      <ResponsiveContainer
+        width="100%"
+        height={460}
+        minWidth={0}
+        minHeight={320}
+        initialDimension={{ width: 400, height: 460 }}
+      >
         <LineChart data={analysis.chartData}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />

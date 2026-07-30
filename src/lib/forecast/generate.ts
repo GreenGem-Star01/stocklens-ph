@@ -1,9 +1,9 @@
-import { predictWithModel } from "@/lib/forecast/models";
+import { lstmPredict, predictWithModel } from "@/lib/forecast/models";
 import type { BaselineModel, ForecastModel } from "@/lib/forecast/types";
 import type { MarketBar } from "@/lib/market/types";
 import type { ChartPoint } from "@/lib/types/stock-analysis";
 
-const CHART_HISTORY_DAYS = 90;
+export const CHART_HISTORY_DAYS = 90;
 
 function formatBarDate(isoDate: string): string {
   const d = new Date(`${isoDate}T12:00:00`);
@@ -38,7 +38,7 @@ export function generateForecast(
 
   let futurePrices: number[];
   if (model === "lstm") {
-    futurePrices = predictWithModel("linear", closes, horizonDays);
+    futurePrices = lstmPredict(closes, horizonDays);
   } else {
     futurePrices = predictWithModel(model as BaselineModel, closes, horizonDays, param);
   }
