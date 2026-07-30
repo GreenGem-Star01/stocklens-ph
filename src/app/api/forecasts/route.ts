@@ -11,7 +11,7 @@ export const revalidate = 300;
 export async function GET(request: Request) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous";
-  const limit = checkRateLimit(`forecasts:${ip}`);
+  const limit = await checkRateLimit(`forecasts:${ip}`);
   if (!limit.ok) {
     return NextResponse.json(
       { error: "Too many requests" },

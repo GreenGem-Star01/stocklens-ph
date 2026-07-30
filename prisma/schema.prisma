@@ -61,3 +61,15 @@ model MarketModelMetrics {
   @@id([symbol, model, horizonDays])
   @@map("market_model_metrics")
 }
+
+// Backs API rate limiting (lib/api/rate-limit.ts). Previously in-memory,
+// which doesn't hold up on Vercel's serverless Node runtime — a fresh
+// cold-started instance gets its own empty Map, so the limit only ever
+// applied within a single warm instance's lifetime.
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime @map("reset_at") @db.Timestamptz(6)
+
+  @@map("rate_limits")
+}

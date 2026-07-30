@@ -45,7 +45,7 @@ function parseTunableParam(
 export async function GET(request: Request, context: RouteContext) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous";
-  const limit = checkRateLimit(`stock-forecast:${ip}`);
+  const limit = await checkRateLimit(`stock-forecast:${ip}`);
   if (!limit.ok) {
     return NextResponse.json(
       { error: "Too many requests" },
