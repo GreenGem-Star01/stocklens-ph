@@ -135,3 +135,39 @@ test.describe("forecast model selection", () => {
     }
   });
 });
+
+// Regression coverage for a bug where "Time Range" fetched
+// /history?range=X but the forecast endpoint's chartData (which always
+// used a fixed 90-day window) silently won the merge — changing the
+// control had zero visible effect. The forecast endpoint now accepts and
+// echoes back its own `range` param instead of relying on a second,
+// discarded fetch.
+test.describe("forecast time range", () => {
+  test("selecting a range requests that range and the response echoes it back", async ({
+    page,
+  }) => {
+    await page.goto("/stock/bdo");
+    await page.getByRole("tab", { name: "Forecast" }).click();
+
+    const rangeSelect = page.getByRole("combobox", {
+      name: "Forecast chart time range",
+    });
+
+    for (const [option, rangeParam] of [
+      ["7 days", "7d"],
+      ["90 days", "90d"],
+    ] as const) {
+      const response = page.waitForResponse(
+        (res) =>
+          res.url().includes("/api/stocks/bdo/forecast") &&
+          res.url().includes(`range=${rangeParam}`),
+      );
+      await rangeSelect.click();
+      await page.getByRole("option", { name: option, exact: true }).click();
+      const res = await response;
+      expect(res.ok()).toBe(true);
+      const body = (await res.json()) as { range: string };
+      expect(body.range).toBe(rangeParam);
+    }
+  });
+});

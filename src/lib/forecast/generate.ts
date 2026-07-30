@@ -3,7 +3,7 @@ import type { BaselineModel, ForecastModel } from "@/lib/forecast/types";
 import type { MarketBar } from "@/lib/market/types";
 import type { ChartPoint } from "@/lib/types/stock-analysis";
 
-const CHART_HISTORY_DAYS = 90;
+export const CHART_HISTORY_DAYS = 90;
 
 function formatBarDate(isoDate: string): string {
   const d = new Date(`${isoDate}T12:00:00`);

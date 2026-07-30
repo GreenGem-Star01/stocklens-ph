@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   Card,
@@ -43,6 +43,16 @@ const DEFAULT_PARAM_FOR_MODEL: Record<string, string> = {
   ma: "20",
   linear: "30",
 };
+
+// What the server actually used to build the `analysis` prop passed in
+// (buildMarketAnalysis's own defaults — see build-market-analysis.ts).
+// Settings can seed the chart's initial range/horizon/model to something
+// different, which used to leave the controls showing the user's
+// preference while the chart displayed the server's default data — a
+// real mismatch, not just a "wrong default". See the mount effect below.
+const SERVER_DEFAULT_RANGE = "90d";
+const SERVER_DEFAULT_HORIZON = "7d";
+const SERVER_DEFAULT_MODEL = "linear";
 
 const StockForecastChart = dynamic(
   () =>
@@ -97,6 +107,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
           `/api/stocks/${path}/forecast`,
           window.location.origin,
         );
+        forecastUrl.searchParams.set("range", nextRange);
         forecastUrl.searchParams.set("horizon", nextHorizon);
         forecastUrl.searchParams.set("model", nextModel);
         // Only send param when it's actually non-default — otherwise every
@@ -106,14 +117,13 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
           forecastUrl.searchParams.set("param", nextParam);
         }
 
-        const [historyRes, forecastRes] = await Promise.all([
-          fetch(`/api/stocks/${path}/history?range=${nextRange}`),
-          fetch(forecastUrl),
-        ]);
-        if (historyRes.ok && forecastRes.ok) {
-          const history = (await historyRes.json()) as {
-            points: StockAnalysis["chartData"];
-          };
+        // The forecast endpoint's chartData already reflects `range` (via
+        // historyDays) as of this fix — a separate /history fetch used to
+        // run alongside this and get silently discarded, since
+        // `forecast.chartData ?? history.points` always preferred the
+        // (previously range-blind) forecast response.
+        const forecastRes = await fetch(forecastUrl);
+        if (forecastRes.ok) {
           const forecast = (await forecastRes.json()) as {
             chartData?: StockAnalysis["chartData"];
             performance?: StockAnalysis["performance"];
@@ -122,7 +132,7 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
           };
           setChartAnalysis({
             ...analysis,
-            chartData: forecast.chartData ?? history.points,
+            chartData: forecast.chartData ?? analysis.chartData,
             performance: forecast.performance ?? analysis.performance,
             modelComparison:
               forecast.modelComparison ?? analysis.modelComparison,
@@ -135,6 +145,30 @@ export function StockForecastSection({ analysis }: { analysis: StockAnalysis }) 
     },
     [analysis],
   );
+
+  // `analysis.chartData` was built server-side using the server's own
+  // defaults (range/horizon/model above), not the Settings-derived values
+  // this component seeded its controls with — so if a user has customized
+  // any of those, the controls show one thing while the chart shows
+  // another on first paint. Reconcile once by refetching, the same
+  // mechanism a manual control change already uses.
+  useEffect(() => {
+    if (
+      range !== SERVER_DEFAULT_RANGE ||
+      horizon !== SERVER_DEFAULT_HORIZON ||
+      model !== SERVER_DEFAULT_MODEL
+    ) {
+      // Deferred to a microtask so refetch's setLoading(true) doesn't run
+      // synchronously inside the effect body (same shape as the fetch().then()
+      // chains elsewhere in this file — state only updates after a tick).
+      void Promise.resolve().then(() => refetch(range, horizon, model, param));
+    }
+    // Intentionally mount-only: `range`/`horizon`/`model`/`param` here are
+    // read for their initial-mount snapshot, not tracked for changes —
+    // the on*Change handlers below already refetch when the user changes
+    // a control, so depending on them here would double-fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onRangeChange = (value: string) => {
     setRange(value);

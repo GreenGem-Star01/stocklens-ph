@@ -1,5 +1,9 @@
 import { getStockAnalysisStatic } from "@/lib/data/stocks";
-import { generateForecast, forecastTargetFromPoints } from "@/lib/forecast/generate";
+import {
+  CHART_HISTORY_DAYS,
+  generateForecast,
+  forecastTargetFromPoints,
+} from "@/lib/forecast/generate";
 import { horizonToDays } from "@/lib/forecast/horizon";
 import { bestModelMetrics } from "@/lib/forecast/backtest";
 import type { ForecastModel } from "@/lib/forecast/types";
@@ -146,17 +150,24 @@ async function loadForecastPoints(
   model: ForecastModel,
   horizonDays: number,
   bars: MarketBar[],
+  historyDays: number,
 ): Promise<ChartPoint[]> {
-  if (isDbMarketEnabled()) {
-    const fromDb = await fetchForecastPoints(ticker, model, horizonDays);
-    if (fromDb?.length) return fromDb;
+  // Precomputed DB/snapshot data was generated with CHART_HISTORY_DAYS —
+  // only safe to serve it back when the caller actually wants that window.
+  // A non-default historyDays (the chart's "Time Range" control) needs a
+  // live regeneration to reflect it at all.
+  if (historyDays === CHART_HISTORY_DAYS) {
+    if (isDbMarketEnabled()) {
+      const fromDb = await fetchForecastPoints(ticker, model, horizonDays);
+      if (fromDb?.length) return fromDb;
+    }
+
+    const fromSnap = await getForecastFromSnapshot(symbol, model, horizonDays);
+    if (fromSnap?.length) return fromSnap;
   }
 
-  const fromSnap = await getForecastFromSnapshot(symbol, model, horizonDays);
-  if (fromSnap?.length) return fromSnap;
-
   if (bars.length >= 60) {
-    return generateForecast(bars, model, horizonDays);
+    return generateForecast(bars, model, horizonDays, historyDays);
   }
 
   return barsToHistoryPoints(bars);
@@ -187,6 +198,7 @@ async function loadMetrics(
 export type BuildMarketAnalysisOptions = {
   model?: ForecastModel;
   horizon?: string;
+  historyDays?: number;
 };
 
 export async function buildMarketAnalysis(
@@ -204,11 +216,19 @@ export async function buildMarketAnalysis(
   const symbol = normalized.replace(/\.PS$/i, "");
   const model = options.model ?? "linear";
   const horizonDays = options.horizon ? horizonToDays(options.horizon) : 7;
+  const historyDays = options.historyDays ?? CHART_HISTORY_DAYS;
 
   const base = getStockAnalysisStatic(normalized) ?? catalogTemplate(normalized);
   const isIndex = base.info.sector === "Index" || symbol === "PSEI";
 
-  const chartData = await loadForecastPoints(symbol, normalized, model, horizonDays, bars);
+  const chartData = await loadForecastPoints(
+    symbol,
+    normalized,
+    model,
+    horizonDays,
+    bars,
+    historyDays,
+  );
   const forecastStart =
     chartData.find((p) => p.forecast != null)?.date ?? base.forecastStartDate;
 
