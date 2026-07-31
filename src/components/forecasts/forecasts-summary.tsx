@@ -1,9 +1,13 @@
 import { BarChart3, Calendar, TrendingUp } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { forecastSummary } from "@/lib/data/forecasts";
+import type { ForecastsPayload } from "@/lib/api/market-provider/types";
 
-export function ForecastsSummary() {
+type ForecastsSummaryProps = {
+  summary: ForecastsPayload["summary"];
+};
+
+export function ForecastsSummary({ summary }: ForecastsSummaryProps) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card className="card-interactive">
@@ -14,9 +18,9 @@ export function ForecastsSummary() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-semibold">{forecastSummary.totalToday}</div>
+          <div className="text-3xl font-semibold">{summary.totalToday}</div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Last updated: {forecastSummary.lastUpdated}
+            Last updated: {summary.lastUpdated}
           </p>
         </CardContent>
       </Card>
@@ -30,10 +34,10 @@ export function ForecastsSummary() {
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-semibold">
-            {forecastSummary.averageAccuracy}
+            {summary.averageAccuracy}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            LSTM directional accuracy
+            Best-fit model directional accuracy
           </p>
         </CardContent>
       </Card>
@@ -46,9 +50,9 @@ export function ForecastsSummary() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-semibold">{forecastSummary.upwardCount}</div>
+          <div className="text-3xl font-semibold">{summary.upwardCount}</div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {forecastSummary.upwardPercent} of all forecasts
+            {summary.upwardPercent} of all forecasts
           </p>
         </CardContent>
       </Card>

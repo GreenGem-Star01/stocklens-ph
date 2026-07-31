@@ -6,14 +6,21 @@ import {
 } from "@/lib/data/dashboard";
 import {
   allForecasts,
+  expectedChangePct,
   forecastSummary,
   modelPerformance,
+  summarizeModelPerformance,
 } from "@/lib/data/forecasts";
 import { buildMarketAnalysis } from "@/lib/data/build-market-analysis";
-import { getAllForecastsFromSnapshot } from "@/lib/market/forecasts-snapshot";
+import {
+  getAllForecastsFromSnapshot,
+  getAllMetricsFromSnapshot,
+  type SnapshotMetricsRow,
+} from "@/lib/market/forecasts-snapshot";
 import { getPseCompanyByTicker } from "@/lib/pse/universe";
 import { TICKER_BY_SYMBOL } from "@/lib/constants/tickers";
 import type { MarketProvider } from "@/lib/api/market-provider/types";
+import { isUpwardTrend, trendFromPrices } from "@/lib/forecast";
 import {
   formatAsOf,
   formatChangePct,
@@ -178,6 +185,7 @@ export const staticMarketProvider: MarketProvider = {
   },
 
   async getForecastsData() {
+    const horizonDays = 7;
     const snapRows = await getAllForecastsFromSnapshot();
     if (snapRows.length === 0) {
       return {
@@ -188,31 +196,80 @@ export const staticMarketProvider: MarketProvider = {
     }
 
     const quotes = snapshotQuotes();
+    const allMetrics = await getAllMetricsFromSnapshot();
+    const metricsForHorizon = allMetrics.filter((m) => m.horizonDays === horizonDays);
+    const metricsBySymbol = new Map<string, SnapshotMetricsRow[]>();
+    for (const m of metricsForHorizon) {
+      const list = metricsBySymbol.get(m.symbol) ?? [];
+      list.push(m);
+      metricsBySymbol.set(m.symbol, list);
+    }
+
     const forecasts = snapRows
-      .filter((r) => r.horizonDays === 7 && r.model === "linear")
+      .filter((r) => r.horizonDays === horizonDays && r.model === "linear")
       .map((row) => {
         const ticker = symbolToTicker(row.symbol);
         const company = getPseCompanyByTicker(ticker);
         const quote = quotes.get(row.symbol);
         const lastForecast = [...row.points].reverse().find((p) => p.forecast != null);
+        const target = lastForecast?.forecast ?? null;
+        const lastPrice = quote?.lastClose ?? 0;
+        const trend = trendFromPrices(lastPrice, target ?? lastPrice);
+        const currentPrice = quote ? String(quote.lastClose) : "—";
+        const forecast7d = target != null ? String(target) : "—";
+        const symbolMetrics = metricsBySymbol.get(row.symbol) ?? [];
+        const best = symbolMetrics.length
+          ? symbolMetrics.reduce((a, b) => (a.mae < b.mae ? a : b))
+          : null;
+
         return {
           ticker,
           company: company?.companyName ?? row.symbol,
           sector: company?.sector ?? "Equity",
-          currentPrice: quote ? String(quote.lastClose) : "—",
-          forecast7d: lastForecast?.forecast != null ? String(lastForecast.forecast) : "—",
-          trend: "Mixed Signal" as const,
-          accuracy: "—",
+          currentPrice,
+          forecast7d,
+          trend,
+          accuracy: best?.dirAccuracy != null ? `${best.dirAccuracy.toFixed(1)}%` : "—",
           date: row.generatedAt.slice(0, 10),
+          ...(quote && target != null && trend !== "Mixed Signal"
+            ? { expectedChange: expectedChangePct(currentPrice, forecast7d) }
+            : {}),
         };
       });
 
+    const modelPerf = summarizeModelPerformance(metricsForHorizon);
+
+    const upwardCount = forecasts.filter((f) => isUpwardTrend(f.trend)).length;
+    const accuracyValues = forecasts
+      .map((f) => Number.parseFloat(f.accuracy))
+      .filter((v) => Number.isFinite(v));
+    const averageAccuracy = accuracyValues.length
+      ? `${Math.round(
+          accuracyValues.reduce((sum, v) => sum + v, 0) / accuracyValues.length,
+        )}%`
+      : "—";
+    const latestDate = forecasts.reduce<string | null>(
+      (latest, f) => (!latest || f.date > latest ? f.date : latest),
+      null,
+    );
+
     return {
       forecasts,
-      modelPerformance,
+      modelPerformance: modelPerf.length ? modelPerf : modelPerformance,
       summary: {
-        ...forecastSummary,
         totalToday: forecasts.length,
+        lastUpdated: latestDate
+          ? new Date(`${latestDate}T12:00:00`).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+          : forecastSummary.lastUpdated,
+        averageAccuracy,
+        upwardCount,
+        upwardPercent: forecasts.length
+          ? `${Math.round((upwardCount / forecasts.length) * 100)}%`
+          : "0%",
       },
     };
   },

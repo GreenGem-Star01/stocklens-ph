@@ -83,4 +83,51 @@ test.describe("smoke", () => {
       }),
     ).toBeVisible();
   });
+
+  // Regression coverage for a bug where this page rendered a bundled static
+  // demo array regardless of provider/data source, so it never reflected
+  // live forecasts even when the DB-backed pipeline had fresh data. The page
+  // must now come from getForecastsData() and render whatever it returns —
+  // pinning the summary/table/tab wiring here catches a future revert back
+  // to a hardcoded import even in environments where the underlying numbers
+  // happen to match the old demo values.
+  test("forecasts page loads data through the market provider and all tabs render", async ({
+    page,
+  }) => {
+    await page.goto("/forecasts");
+    await expect(page.getByRole("heading", { name: "Forecasts" })).toBeVisible();
+
+    await expect(page.getByText("Total Forecasts Today")).toBeVisible();
+    const totalToday = await page
+      .locator("text=Total Forecasts Today")
+      .locator("xpath=../../..")
+      .getByText(/^\d+$/)
+      .innerText();
+    expect(Number(totalToday)).toBeGreaterThan(0);
+
+    await expect(page.getByText(/Last updated: /)).toBeVisible();
+    await expect(page.getByText("Average Model Accuracy")).toBeVisible();
+    await expect(page.getByText("Projected Upward Forecasts")).toBeVisible();
+
+    // "All Forecasts" is the default tab.
+    await expect(page.getByRole("cell", { name: /\.PS$/ }).first()).toBeVisible();
+
+    await page.getByRole("tab", { name: "Projected Upward" }).click();
+    await expect(page.getByText(/stocks? with projected upward movement/)).toBeVisible();
+
+    await page.getByRole("tab", { name: "Projected Downward" }).click();
+    await expect(page.getByText(/stocks? with projected downward movement/)).toBeVisible();
+
+    await page.getByRole("tab", { name: "Model Performance" }).click();
+    await expect(
+      page.getByText("Model Performance Comparison", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("row", { name: /Naive Baseline/ })).toBeVisible();
+    await expect(page.getByText("Key Insights")).toBeVisible();
+    // The insight names whichever model actually scored best — it must not
+    // be hardcoded to a fixed model/percentage regardless of the data.
+    await expect(
+      page.getByText(/model currently has the strongest average directional accuracy/),
+    ).toBeVisible();
+  });
 });

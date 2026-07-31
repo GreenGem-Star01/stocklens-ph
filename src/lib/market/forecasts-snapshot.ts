@@ -9,7 +9,7 @@ type SnapshotForecastRow = {
   points: ChartPoint[];
 };
 
-type SnapshotMetricsRow = {
+export type SnapshotMetricsRow = {
   symbol: string;
   model: string;
   horizonDays: number;
@@ -99,4 +99,9 @@ export async function getMetricsFromSnapshot(
 export async function getAllForecastsFromSnapshot(): Promise<SnapshotForecastRow[]> {
   const snap = await getCachedSnapshot();
   return snap?.forecasts ?? [];
+}
+
+export async function getAllMetricsFromSnapshot(): Promise<SnapshotMetricsRow[]> {
+  const snap = await getCachedSnapshot();
+  return snap?.metrics ?? [];
 }

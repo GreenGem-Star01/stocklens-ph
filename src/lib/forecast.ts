@@ -41,3 +41,11 @@ export function isUpwardTrend(trend: ForecastTrend): boolean {
 export function isDownwardTrend(trend: ForecastTrend): boolean {
   return trend === "Projected Downward";
 }
+
+export function trendFromPrices(last: number, target: number): ForecastTrend {
+  if (!last) return "Mixed Signal";
+  const delta = (target - last) / last;
+  if (delta > 0.01) return "Projected Upward";
+  if (delta < -0.01) return "Projected Downward";
+  return "Mixed Signal";
+}

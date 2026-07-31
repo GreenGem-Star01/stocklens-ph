@@ -71,6 +71,18 @@ export async function getForecastPoints(
   )();
 }
 
+function mapMetricsRow(row: MetricsRow): StoredModelMetrics {
+  return {
+    model: row.model as ForecastModel,
+    horizonDays: row.horizon_days,
+    mae: Number(row.mae),
+    rmse: Number(row.rmse),
+    mape: Number(row.mape),
+    dirAccuracy: row.dir_accuracy != null ? Number(row.dir_accuracy) : null,
+    computedAt: row.computed_at,
+  };
+}
+
 export async function fetchModelMetrics(
   ticker: string,
   horizonDays: number,
@@ -86,15 +98,24 @@ export async function fetchModelMetrics(
     [symbol, horizonDays],
   );
 
-  return rows.map((row) => ({
-    model: row.model as ForecastModel,
-    horizonDays: row.horizon_days,
-    mae: Number(row.mae),
-    rmse: Number(row.rmse),
-    mape: Number(row.mape),
-    dirAccuracy: row.dir_accuracy != null ? Number(row.dir_accuracy) : null,
-    computedAt: row.computed_at,
-  }));
+  return rows.map(mapMetricsRow);
+}
+
+/** All per-symbol metrics for a horizon, across the whole universe — used to
+ * compute portfolio-wide model performance averages (not scoped to one ticker). */
+export async function fetchAllModelMetrics(
+  horizonDays: number,
+): Promise<StoredModelMetrics[]> {
+  if (!isDbMarketEnabled()) return [];
+
+  const rows = await query<MetricsRow>(
+    `SELECT symbol, model, horizon_days, mae, rmse, mape, dir_accuracy, computed_at
+     FROM market_model_metrics
+     WHERE horizon_days = $1`,
+    [horizonDays],
+  );
+
+  return rows.map(mapMetricsRow);
 }
 
 export async function getModelMetrics(

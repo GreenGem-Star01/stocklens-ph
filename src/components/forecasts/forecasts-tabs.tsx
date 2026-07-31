@@ -25,9 +25,9 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ForecastsTabSummary } from "@/components/forecasts/forecasts-tab-summary";
-import { allForecasts, modelPerformance } from "@/lib/data/forecasts";
+import type { ModelPerformance, StockForecast } from "@/lib/data/forecasts";
 import { isDownwardTrend, isUpwardTrend, tickerToPath } from "@/lib/forecast";
-import type { StockForecast } from "@/lib/data/forecasts";
+import type { ForecastsPayload } from "@/lib/api/market-provider/types";
 
 function ForecastTable({
   forecasts,
@@ -120,10 +120,27 @@ function ForecastTable({
   );
 }
 
-export function ForecastsTabs() {
+type ForecastsTabsProps = {
+  forecasts: StockForecast[];
+  modelPerformance: ModelPerformance[];
+  summary: ForecastsPayload["summary"];
+};
+
+export function ForecastsTabs({
+  forecasts,
+  modelPerformance,
+  summary,
+}: ForecastsTabsProps) {
   const [tab, setTab] = useState("all");
-  const upwardForecasts = allForecasts.filter((f) => isUpwardTrend(f.trend));
-  const downwardForecasts = allForecasts.filter((f) => isDownwardTrend(f.trend));
+  const upwardForecasts = forecasts.filter((f) => isUpwardTrend(f.trend));
+  const downwardForecasts = forecasts.filter((f) => isDownwardTrend(f.trend));
+  const bestModel = modelPerformance.length
+    ? modelPerformance.reduce((best, m) =>
+        Number.parseFloat(m.avgAccuracy) > Number.parseFloat(best.avgAccuracy)
+          ? m
+          : best,
+      )
+    : null;
 
   return (
     <Tabs
@@ -142,17 +159,18 @@ export function ForecastsTabs() {
         tab={tab}
         upwardCount={upwardForecasts.length}
         downwardCount={downwardForecasts.length}
+        summary={summary}
       />
 
       <TabsContent value="all" className="space-y-4">
         <Card className="card-interactive">
           <CardHeader>
             <CardTitle>All Stock Forecasts</CardTitle>
-            <CardDescription>7-day price forecasts using LSTM model</CardDescription>
+            <CardDescription>7-day price forecasts using the linear regression model</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <ForecastTable
-              forecasts={allForecasts}
+              forecasts={forecasts}
               caption="All stock forecasts"
             />
           </CardContent>
@@ -231,7 +249,7 @@ export function ForecastsTabs() {
                     <TableCell>
                       <Badge
                         variant={
-                          model.model === "LSTM" ? "default" : "secondary"
+                          model.model === bestModel?.model ? "default" : "secondary"
                         }
                       >
                         {model.avgAccuracy}
@@ -249,16 +267,21 @@ export function ForecastsTabs() {
             <CardTitle>Key Insights</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <p>
-              The <strong>LSTM model</strong> consistently outperforms traditional
-              baseline models across all metrics, achieving an average directional
-              accuracy of <strong>65%</strong>.
-            </p>
+            {bestModel ? (
+              <p>
+                The <strong>{bestModel.model}</strong> model currently has the
+                strongest average directional accuracy of the models compared
+                here, at <strong>{bestModel.avgAccuracy}</strong>.
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                Model performance data isn&apos;t available yet.
+              </p>
+            )}
             <p className="text-muted-foreground">
-              While the model shows improvement over simpler approaches, users
-              should combine these forecasts with fundamental analysis, technical
-              indicators, and market context before making any investment
-              decisions.
+              Users should combine these forecasts with fundamental analysis,
+              technical indicators, and market context before making any
+              investment decisions.
             </p>
             <p className="text-muted-foreground">
               Model performance varies by sector, with Financials and Consumer

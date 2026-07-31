@@ -3,9 +3,12 @@ import Link from "next/link";
 import { ForecastDisclaimer } from "@/components/dashboard/forecast-disclaimer";
 import { ForecastsSummary } from "@/components/forecasts/forecasts-summary";
 import { ForecastsTabs } from "@/components/forecasts/forecasts-tabs";
+import { getForecastsData } from "@/lib/api/market-provider";
 import { APP_PAGE_CLASS } from "@/lib/layout";
 
-export default function ForecastsPage() {
+export default async function ForecastsPage() {
+  const { forecasts, modelPerformance, summary } = await getForecastsData();
+
   return (
     <div className={APP_PAGE_CLASS}>
       <div>
@@ -16,15 +19,15 @@ export default function ForecastsPage() {
         <p className="mt-2 text-sm">
           <Link
             href="/stocks"
-            className="text-primary underline-offset-4 hover:underline"
+            className="text-primary underline underline-offset-4"
           >
             Looking for a ticker? Browse all stocks
           </Link>
           . Forecasts below cover the demo blue-chip subset only.
         </p>
       </div>
-      <ForecastsSummary />
-      <ForecastsTabs />
+      <ForecastsSummary summary={summary} />
+      <ForecastsTabs forecasts={forecasts} modelPerformance={modelPerformance} summary={summary} />
       <ForecastDisclaimer />
     </div>
   );

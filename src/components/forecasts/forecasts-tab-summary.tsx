@@ -1,17 +1,19 @@
 "use client";
 
-import { forecastSummary } from "@/lib/data/forecasts";
+import type { ForecastsPayload } from "@/lib/api/market-provider/types";
 
 type ForecastsTabSummaryProps = {
   tab: string;
   upwardCount: number;
   downwardCount: number;
+  summary: ForecastsPayload["summary"];
 };
 
 export function ForecastsTabSummary({
   tab,
   upwardCount,
   downwardCount,
+  summary,
 }: ForecastsTabSummaryProps) {
   if (tab === "upward") {
     return (
@@ -34,15 +36,15 @@ export function ForecastsTabSummary({
   if (tab === "performance") {
     return (
       <p className="text-sm text-muted-foreground">
-        Average LSTM directional accuracy: {forecastSummary.averageAccuracy}
+        Average best-fit directional accuracy: {summary.averageAccuracy}
       </p>
     );
   }
 
   return (
     <p className="text-sm text-muted-foreground">
-      {forecastSummary.upwardCount} of {forecastSummary.totalToday} projected
-      upward ({forecastSummary.upwardPercent})
+      {summary.upwardCount} of {summary.totalToday} projected upward (
+      {summary.upwardPercent})
     </p>
   );
 }

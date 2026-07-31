@@ -18,7 +18,15 @@ import {
 } from "@/lib/market/format-quote";
 import { applyMarketSession } from "@/lib/market/pse-session";
 import { getLatestQuotes, getQuotesAsOf } from "@/lib/market/quotes-repository";
-import { fetchAllForecastSymbols, fetchModelMetrics } from "@/lib/market/forecasts-repository";
+import {
+  fetchAllForecastSymbols,
+  fetchAllModelMetrics,
+  fetchForecastPoints,
+  fetchModelMetrics,
+} from "@/lib/market/forecasts-repository";
+import { forecastTargetFromPoints } from "@/lib/forecast/generate";
+import { expectedChangePct, summarizeModelPerformance } from "@/lib/data/forecasts";
+import { isUpwardTrend, trendFromPrices } from "@/lib/forecast";
 import { symbolToTicker, tickerToSymbol } from "@/lib/market/symbol";
 import type { MarketBar } from "@/lib/market/types";
 import type { FeaturedStock, RecentAnalysisRow } from "@/lib/types/stock";
@@ -175,6 +183,7 @@ export const dbMarketProvider: MarketProvider = {
   },
 
   async getForecastsData() {
+    const horizonDays = 7;
     const symbols = await fetchAllForecastSymbols();
     const quotes = await getLatestQuotes();
 
@@ -183,35 +192,61 @@ export const dbMarketProvider: MarketProvider = {
         const ticker = symbolToTicker(symbol);
         const company = getPseCompanyByTicker(ticker);
         const quote = quotes.get(symbol);
-        const metrics = await fetchModelMetrics(ticker, 7);
+        const [points, metrics] = await Promise.all([
+          fetchForecastPoints(ticker, "linear", horizonDays),
+          fetchModelMetrics(ticker, horizonDays),
+        ]);
         const best = metrics[0];
-        const price = quote
-          ? formatPriceAmount(quote.lastClose)
-          : "—";
+        const target = forecastTargetFromPoints(points ?? []);
+        const lastPrice = quote?.lastClose ?? 0;
+        const trend = trendFromPrices(lastPrice, target || lastPrice);
+        const currentPrice = quote ? formatPriceAmount(quote.lastClose) : "—";
+        const forecast7d = target ? formatPriceAmount(target) : "—";
 
         return {
           ticker,
           company: company?.companyName ?? symbol,
           sector: company?.sector ?? "Equity",
-          currentPrice: price,
-          forecast7d: "—",
-          trend: "Mixed Signal" as const,
+          currentPrice,
+          forecast7d,
+          trend,
           accuracy: best?.dirAccuracy != null ? `${best.dirAccuracy.toFixed(1)}%` : "—",
           date: new Date().toISOString().slice(0, 10),
-          expectedChange: quote ? formatChangePct(quote.changePct) : "—",
+          ...(quote && target && trend !== "Mixed Signal"
+            ? { expectedChange: expectedChangePct(currentPrice, forecast7d) }
+            : {}),
         };
       }),
     );
 
+    const allMetrics = await fetchAllModelMetrics(horizonDays);
+    const modelPerformance = summarizeModelPerformance(allMetrics);
+
+    const upwardCount = forecasts.filter((f) => isUpwardTrend(f.trend)).length;
+    const accuracyValues = forecasts
+      .map((f) => Number.parseFloat(f.accuracy))
+      .filter((v) => Number.isFinite(v));
+    const averageAccuracy = accuracyValues.length
+      ? `${Math.round(
+          accuracyValues.reduce((sum, v) => sum + v, 0) / accuracyValues.length,
+        )}%`
+      : "—";
+
     return {
       forecasts,
-      modelPerformance: [],
+      modelPerformance,
       summary: {
         totalToday: forecasts.length,
-        lastUpdated: new Date().toISOString().slice(0, 10),
-        averageAccuracy: "—",
-        upwardCount: 0,
-        upwardPercent: "0%",
+        lastUpdated: new Date().toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }),
+        averageAccuracy,
+        upwardCount,
+        upwardPercent: forecasts.length
+          ? `${Math.round((upwardCount / forecasts.length) * 100)}%`
+          : "0%",
       },
     };
   },

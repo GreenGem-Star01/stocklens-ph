@@ -41,5 +41,8 @@ npm run ingest:forecasts:snapshot
 
 - Intraday quotes
 - Order book / Level 2
-- Portfolio backtesting
 - User-trained models
+
+## Shipped post-MVP
+
+- Portfolio-level model-fit backtest on the watchlist (db mode only; unavailable under `MARKET_DATA_SOURCE=static`)

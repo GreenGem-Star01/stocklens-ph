@@ -29,7 +29,7 @@ function parsePrice(value: string): number {
   return Number.parseFloat(cleaned) || 0;
 }
 
-function expectedChangePct(
+export function expectedChangePct(
   current: string,
   forecast: string,
 ): string | undefined {
@@ -96,6 +96,57 @@ export const modelPerformance: ModelPerformance[] = [
     avgAccuracy: "51%",
   },
 ];
+
+export type ModelMetricsLike = {
+  model: string;
+  mae: number;
+  rmse: number;
+  mape: number;
+  dirAccuracy: number | null;
+};
+
+const MODEL_LABELS: Record<string, string> = {
+  lstm: "LSTM",
+  linear: "Linear Regression",
+  ma: "Moving Average",
+  naive: "Naive Baseline",
+};
+
+const MODEL_DISPLAY_ORDER = ["lstm", "linear", "ma", "naive"];
+
+function average(values: number[]): number {
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+/** Aggregates per-symbol stored model metrics (DB or snapshot rows) into the
+ * portfolio-wide averages shown on the Model Performance tab. */
+export function summarizeModelPerformance(
+  rows: ModelMetricsLike[],
+): ModelPerformance[] {
+  const byModel = new Map<string, ModelMetricsLike[]>();
+  for (const row of rows) {
+    const list = byModel.get(row.model) ?? [];
+    list.push(row);
+    byModel.set(row.model, list);
+  }
+
+  const result: ModelPerformance[] = [];
+  for (const model of MODEL_DISPLAY_ORDER) {
+    const group = byModel.get(model);
+    if (!group?.length) continue;
+    const dirValues = group
+      .map((r) => r.dirAccuracy)
+      .filter((v): v is number => v != null);
+    result.push({
+      model: MODEL_LABELS[model] ?? model,
+      avgMAE: average(group.map((r) => r.mae)).toFixed(2),
+      avgRMSE: average(group.map((r) => r.rmse)).toFixed(2),
+      avgMAPE: `${average(group.map((r) => r.mape)).toFixed(2)}%`,
+      avgAccuracy: dirValues.length ? `${average(dirValues).toFixed(0)}%` : "—",
+    });
+  }
+  return result;
+}
 
 const upwardCount = allForecasts.filter((f) => isUpwardTrend(f.trend)).length;
 
