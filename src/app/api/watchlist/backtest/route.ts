@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { checkRateLimit, rateLimitHeaders } from "@/lib/api/rate-limit";
+import { checkRateLimit, rateLimitHeaders, type RateLimitResult } from "@/lib/api/rate-limit";
 import { isDbMarketEnabled } from "@/lib/db/config";
 import {
   aggregatePortfolioMetrics,
   bestPortfolioModel,
   walkForwardBacktest,
 } from "@/lib/forecast/backtest";
-import type { ModelMetrics } from "@/lib/forecast/types";
+import type { ForecastModel, ModelMetrics } from "@/lib/forecast/types";
 import { getDailyBars } from "@/lib/market/bars-repository";
+import { getAllMetricsFromSnapshot } from "@/lib/market/forecasts-snapshot";
+import { tickerToSymbol } from "@/lib/market/symbol";
 import { tickerSymbolSchema } from "@/lib/validation/ticker";
 
 // Route-local: walkForwardBacktest/FORECAST_HORIZONS only support 7 and 30
@@ -21,6 +23,67 @@ const MAX_TICKERS = 6;
 export const revalidate = 300;
 
 type Skipped = { ticker: string; reason: string };
+
+// Static/Vercel deploys have no live Postgres bar history to run a
+// walk-forward backtest against, but the published forecasts snapshot
+// already carries the same per-symbol, per-model walk-forward metrics
+// computed by `ingest:forecasts` — reuse aggregatePortfolioMetrics/
+// bestPortfolioModel against those instead of disabling the feature.
+async function staticBacktestResponse(
+  validTickers: string[],
+  horizonDays: number,
+  tickersSkipped: Skipped[],
+  limit: RateLimitResult,
+): Promise<NextResponse> {
+  const metricsForHorizon = (await getAllMetricsFromSnapshot()).filter(
+    (m) => m.horizonDays === horizonDays,
+  );
+
+  if (metricsForHorizon.length === 0) {
+    return NextResponse.json(
+      { available: false, reason: "static" },
+      { headers: rateLimitHeaders(limit) },
+    );
+  }
+
+  const perTickerMetrics: ModelMetrics[][] = [];
+  const tickersUsed: string[] = [];
+
+  for (const ticker of validTickers) {
+    const symbol = tickerToSymbol(ticker);
+    const rows = metricsForHorizon.filter((m) => m.symbol === symbol);
+    if (rows.length === 0) {
+      tickersSkipped.push({ ticker, reason: "no forecast history available" });
+      continue;
+    }
+    perTickerMetrics.push(
+      rows.map((r) => ({
+        model: r.model as ForecastModel,
+        horizonDays: r.horizonDays,
+        mae: r.mae,
+        rmse: r.rmse,
+        mape: r.mape,
+        dirAccuracy: r.dirAccuracy,
+      })),
+    );
+    tickersUsed.push(ticker);
+  }
+
+  const models = aggregatePortfolioMetrics(perTickerMetrics, horizonDays);
+  const best = bestPortfolioModel(models);
+
+  return NextResponse.json(
+    {
+      available: true,
+      horizonDays,
+      models,
+      bestModel: best?.model ?? null,
+      tickersUsed,
+      tickersSkipped,
+    },
+    { headers: rateLimitHeaders(limit) },
+  );
+}
 
 export async function GET(request: Request) {
   const ip =
@@ -60,10 +123,7 @@ export async function GET(request: Request) {
   }
 
   if (!isDbMarketEnabled()) {
-    return NextResponse.json(
-      { available: false, reason: "static" },
-      { headers: rateLimitHeaders(limit) },
-    );
+    return staticBacktestResponse(validTickers, horizonDays, tickersSkipped, limit);
   }
 
   const barsPerTicker = await Promise.all(

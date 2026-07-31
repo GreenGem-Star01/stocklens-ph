@@ -131,8 +131,8 @@ export function WatchlistPortfolioBacktest() {
           <div className="h-40 animate-pulse rounded-lg border bg-muted/30" />
         ) : !data.available ? (
           <div className="flex h-32 items-center justify-center rounded-lg border border-dashed text-center text-sm text-muted-foreground">
-            Portfolio backtesting needs live market data (
-            <code className="mx-1">MARKET_DATA_SOURCE=db</code>).
+            Portfolio backtesting needs published forecast data — none is
+            available yet.
           </div>
         ) : data.models.length === 0 ? (
           <div className="flex h-32 items-center justify-center rounded-lg border border-dashed text-center text-sm text-muted-foreground">
