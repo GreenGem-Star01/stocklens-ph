@@ -135,6 +135,8 @@ Vercel env: `MARKET_DATA_SOURCE=static` (no `DATABASE_URL`).
 
 Optional: enable [`.github/workflows/market-snapshot.yml`](../.github/workflows/market-snapshot.yml) for scheduled snapshot refresh on GitHub Actions.
 
+**Failure alerting:** all three scheduled ingest workflows (`market-snapshot.yml`, `market-forecasts-snapshot.yml`, `market-forecasts-lstm.yml`) file/reuse a GitHub issue labeled `ingest-failure` when the run fails — see [`.github/ingest-failure-issue.md`](../.github/ingest-failure-issue.md). This does not cover `cron.example.sh` (DSS VM) — that script has no alerting wired up yet.
+
 **Forecasts snapshot (Vercel):** publishes directly to Supabase Storage — no git commit. Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (ingest-only, never in the app's runtime env).
 
 ```bash
