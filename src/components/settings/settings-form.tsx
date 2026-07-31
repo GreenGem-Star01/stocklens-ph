@@ -56,7 +56,7 @@ function SettingRow({
         <Label>{label}</Label>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      <Switch checked={checked} onCheckedChange={onCheckedChange} aria-label={label} />
     </div>
   );
 }
@@ -116,7 +116,7 @@ export function SettingsForm() {
               value={settings.defaultHorizon}
               onValueChange={(v) => v && settings.setField("defaultHorizon", v)}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Default Forecast Horizon">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -132,7 +132,7 @@ export function SettingsForm() {
               value={settings.preferredModel}
               onValueChange={(v) => v && settings.setField("preferredModel", v)}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Preferred Model">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -179,7 +179,7 @@ export function SettingsForm() {
               value={settings.defaultTimeRange}
               onValueChange={(v) => v && settings.setField("defaultTimeRange", v)}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Default Time Range">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
