@@ -18,6 +18,15 @@ import type { IndicatorPoint } from "@/lib/market/indicators";
 
 export type TechnicalPanelKey = "price" | "volume" | "rsi" | "macd";
 
+// forecastPoints (analysis.chartData) keys its dates as short labels like
+// "Jul 24"; indicator points from the API use ISO dates ("2026-07-24") —
+// reformat before matching, or the forecast overlay never lines up with any
+// indicator point and silently never renders.
+function formatBarDate(isoDate: string): string {
+  const d = new Date(`${isoDate}T12:00:00`);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export const ALL_TECHNICAL_PANELS: ReadonlySet<TechnicalPanelKey> = new Set([
   "price",
   "volume",
@@ -73,22 +82,38 @@ export function StockTechnicalChart({
     );
   }
 
-  const forecastByDate = new Map(
-    forecastPoints.filter((p) => p.forecast != null).map((p) => [p.date, p.forecast]),
-  );
-
-  const priceData = points.map((p) => ({
-    ...p,
-    forecast: forecastByDate.get(p.date) ?? null,
-  }));
+  // forecastPoints only covers dates after the last real bar (the forecast
+  // horizon), so it can never overlap an existing indicator row — append
+  // those as their own rows instead of trying to graft them onto history.
+  const priceData = [
+    ...points.map((p) => ({ ...p, date: formatBarDate(p.date), forecast: null as number | null })),
+    ...forecastPoints
+      .filter((p) => p.forecast != null)
+      .map((p) => ({
+        date: p.date,
+        close: null,
+        volume: null,
+        sma20: null,
+        sma50: null,
+        rsi14: null,
+        macd: null,
+        macdSignal: null,
+        macdHist: null,
+        forecast: p.forecast,
+      })),
+  ];
 
   const volumeData = points.map((p) => ({
-    date: p.date,
+    date: formatBarDate(p.date),
     volume: p.volume,
   }));
 
-  const rsiData = points.filter((p) => p.rsi14 != null);
-  const macdData = points.filter((p) => p.macd != null);
+  const rsiData = points
+    .filter((p) => p.rsi14 != null)
+    .map((p) => ({ ...p, date: formatBarDate(p.date) }));
+  const macdData = points
+    .filter((p) => p.macd != null)
+    .map((p) => ({ ...p, date: formatBarDate(p.date) }));
 
   return (
     <div className="space-y-6" role="img" aria-label="Technical analysis chart">

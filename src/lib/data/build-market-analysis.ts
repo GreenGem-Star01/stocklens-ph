@@ -27,6 +27,7 @@ import type { MarketBar, MarketQuote } from "@/lib/market/types";
 import { applyOfficialLabelsToAnalysis } from "@/lib/pse/apply-official-labels";
 import { getPseCompanyByTicker } from "@/lib/pse/universe";
 import { roundToDisplayPrecision, trendFromPrices } from "@/lib/forecast";
+import type { ForecastTrend } from "@/lib/types/stock";
 import type {
   ChartPoint,
   ModelComparisonRow,
@@ -64,6 +65,29 @@ function chartValuesFromPoints(points: ChartPoint[]): number[] {
 function formatTarget(price: number, isIndex: boolean): string {
   if (isIndex) return Math.round(price).toLocaleString("en-PH");
   return formatPriceAmount(price);
+}
+
+// Mirrors build-stock-analysis.ts's demo-seed text templates, but built from
+// live metrics/performance instead of the static seed — base.aiInsight and
+// base.marketContext.sectorNote otherwise stay frozen at whatever the demo
+// seed said (e.g. a stale price/accuracy that contradicts the live numbers
+// shown elsewhere on the same page).
+function trendSummary(
+  name: string,
+  from: string,
+  to: string,
+  trend: ForecastTrend,
+): string {
+  if (trend === "Mixed Signal") {
+    return `${name} is range-bound with the model projecting a narrow band around ${to} from ${from}.`;
+  }
+  const dir = trend === "Projected Upward" ? "upside" : "downside";
+  return `${name} shows ${dir} over the next 7 trading days, from ${from} toward about ${to}.`;
+}
+
+function sectorNote(sector: string, positive: boolean): string {
+  const tone = positive ? "outperforming" : "under pressure";
+  return `${sector} names are ${tone} this week amid mixed macro data and FX moves.`;
 }
 
 function metricsToPerformance(m: {
@@ -263,6 +287,30 @@ export async function buildMarketAnalysis(
     ? formatAsOf(quote.asOf)
     : base.lastUpdated;
 
+  const forecastTargetStr = formatTarget(target || lastPrice, isIndex);
+  const trend = trendFromPrices(
+    roundToDisplayPrecision(lastPrice, isIndex),
+    roundToDisplayPrecision(target || lastPrice, isIndex),
+  );
+
+  // Only regenerated when there's a live quote to regenerate them from —
+  // without one, base's demo-seed text is at least internally consistent
+  // with itself (unlike leaving it paired with the live numbers above).
+  const aiInsight = quote
+    ? {
+        ...base.aiInsight,
+        summary: trendSummary(base.info.name, metrics.lastClose, forecastTargetStr, trend),
+        caution: `Directional accuracy is ${performance.directionalAccuracy} for this ticker. Use for research only—not investment advice.`,
+        context: sectorNote(base.info.sector, metrics.dailyChangePositive),
+      }
+    : base.aiInsight;
+  const marketContext = quote
+    ? {
+        ...base.marketContext,
+        sectorNote: sectorNote(base.info.sector, metrics.dailyChangePositive),
+      }
+    : base.marketContext;
+
   return applyOfficialLabelsToAnalysis({
     ...base,
     metrics,
@@ -271,13 +319,12 @@ export async function buildMarketAnalysis(
       isIndex,
     }),
     forecastStartDate: forecastStart,
-    forecastTarget: formatTarget(target || lastPrice, isIndex),
-    trend: trendFromPrices(
-      roundToDisplayPrecision(lastPrice, isIndex),
-      roundToDisplayPrecision(target || lastPrice, isIndex),
-    ),
+    forecastTarget: forecastTargetStr,
+    trend,
     performance,
     modelComparison,
+    aiInsight,
+    marketContext,
     lastUpdated,
   });
 }
