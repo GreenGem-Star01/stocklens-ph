@@ -49,3 +49,15 @@ export function trendFromPrices(last: number, target: number): ForecastTrend {
   if (delta < -0.01) return "Projected Downward";
   return "Mixed Signal";
 }
+
+/** Rounds to the same precision shown on screen (formatPriceAmount/PSEi
+ * display) — trend classification must use this, not raw floats, so a price
+ * that displays unchanged (e.g. ₱0.45 → ₱0.45) can never be labeled a
+ * projected move the user can't actually see. Uses toFixed rather than
+ * Math.round(x*100)/100: they disagree at exact half-cent floats (e.g.
+ * 0.475 → toFixed "0.47", Math.round-based → 0.48) due to binary
+ * floating-point representation, which reintroduces the exact display/trend
+ * mismatch this function exists to prevent. */
+export function roundToDisplayPrecision(value: number, isIndex = false): number {
+  return isIndex ? Math.round(value) : Number(value.toFixed(2));
+}

@@ -14,9 +14,8 @@ vi.mock("@/lib/market/quotes-repository", () => ({
 
 vi.mock("@/lib/market/forecasts-repository", () => ({
   fetchAllForecastSymbols: vi.fn(),
+  fetchAllForecastPoints: vi.fn(),
   fetchAllModelMetrics: vi.fn(),
-  fetchForecastPoints: vi.fn(),
-  fetchModelMetrics: vi.fn(),
 }));
 
 vi.mock("@/lib/market/quotes-snapshot", () => ({
@@ -35,10 +34,9 @@ import { dbMarketProvider } from "@/lib/api/market-provider/db";
 import { staticMarketProvider } from "@/lib/api/market-provider/static";
 import { allForecasts, forecastSummary, modelPerformance } from "@/lib/data/forecasts";
 import {
+  fetchAllForecastPoints,
   fetchAllForecastSymbols,
   fetchAllModelMetrics,
-  fetchForecastPoints,
-  fetchModelMetrics,
 } from "@/lib/market/forecasts-repository";
 import {
   getAllForecastsFromSnapshot,
@@ -73,35 +71,28 @@ describe("dbMarketProvider.getForecastsData", () => {
         ["MBT", quote(50)],
       ]),
     );
-    vi.mocked(fetchForecastPoints).mockImplementation(async (ticker) => {
-      if (ticker === "BDO.PS") {
-        return [
-          { date: "Jul 30", price: 100, forecast: null },
-          { date: "Aug 6", price: null, forecast: 110 },
-        ];
-      }
-      if (ticker === "MBT.PS") {
-        return [
-          { date: "Jul 30", price: 50, forecast: null },
-          { date: "Aug 6", price: null, forecast: 45 },
-        ];
-      }
-      return [];
-    });
-    vi.mocked(fetchModelMetrics).mockImplementation(async (ticker) => {
-      if (ticker === "BDO.PS") {
-        return [
-          { model: "linear", horizonDays: 7, mae: 1, rmse: 1, mape: 1, dirAccuracy: 70, computedAt: new Date() },
-        ];
-      }
-      if (ticker === "MBT.PS") {
-        return [
-          { model: "linear", horizonDays: 7, mae: 2, rmse: 2, mape: 2, dirAccuracy: 50, computedAt: new Date() },
-        ];
-      }
-      return [];
-    });
-    vi.mocked(fetchAllModelMetrics).mockResolvedValue([]);
+    vi.mocked(fetchAllForecastPoints).mockResolvedValue(
+      new Map([
+        [
+          "BDO",
+          [
+            { date: "Jul 30", price: 100, forecast: null },
+            { date: "Aug 6", price: null, forecast: 110 },
+          ],
+        ],
+        [
+          "MBT",
+          [
+            { date: "Jul 30", price: 50, forecast: null },
+            { date: "Aug 6", price: null, forecast: 45 },
+          ],
+        ],
+      ]),
+    );
+    vi.mocked(fetchAllModelMetrics).mockResolvedValue([
+      { symbol: "BDO", model: "linear", horizonDays: 7, mae: 1, rmse: 1, mape: 1, dirAccuracy: 70, computedAt: new Date() },
+      { symbol: "MBT", model: "linear", horizonDays: 7, mae: 2, rmse: 2, mape: 2, dirAccuracy: 50, computedAt: new Date() },
+    ]);
 
     const result = await dbMarketProvider.getForecastsData();
 
@@ -134,11 +125,12 @@ describe("dbMarketProvider.getForecastsData", () => {
   it("aggregates model performance across symbols per model instead of returning an empty array", async () => {
     vi.mocked(fetchAllForecastSymbols).mockResolvedValue([]);
     vi.mocked(getLatestQuotes).mockResolvedValue(new Map());
+    vi.mocked(fetchAllForecastPoints).mockResolvedValue(new Map());
     vi.mocked(fetchAllModelMetrics).mockResolvedValue([
-      { model: "naive", horizonDays: 7, mae: 2, rmse: 2, mape: 2, dirAccuracy: 40, computedAt: new Date() },
-      { model: "naive", horizonDays: 7, mae: 4, rmse: 4, mape: 4, dirAccuracy: 60, computedAt: new Date() },
-      { model: "linear", horizonDays: 7, mae: 1, rmse: 1, mape: 1, dirAccuracy: 60, computedAt: new Date() },
-      { model: "linear", horizonDays: 7, mae: 3, rmse: 3, mape: 3, dirAccuracy: 80, computedAt: new Date() },
+      { symbol: "BDO", model: "naive", horizonDays: 7, mae: 2, rmse: 2, mape: 2, dirAccuracy: 40, computedAt: new Date() },
+      { symbol: "MBT", model: "naive", horizonDays: 7, mae: 4, rmse: 4, mape: 4, dirAccuracy: 60, computedAt: new Date() },
+      { symbol: "BDO", model: "linear", horizonDays: 7, mae: 1, rmse: 1, mape: 1, dirAccuracy: 60, computedAt: new Date() },
+      { symbol: "MBT", model: "linear", horizonDays: 7, mae: 3, rmse: 3, mape: 3, dirAccuracy: 80, computedAt: new Date() },
     ]);
 
     const result = await dbMarketProvider.getForecastsData();
@@ -147,6 +139,81 @@ describe("dbMarketProvider.getForecastsData", () => {
       { model: "Linear Regression", avgMAE: "2.00", avgRMSE: "2.00", avgMAPE: "2.00%", avgAccuracy: "70%" },
       { model: "Naive Baseline", avgMAE: "3.00", avgRMSE: "3.00", avgMAPE: "3.00%", avgAccuracy: "50%" },
     ]);
+  });
+
+  it("excludes PSEI from the stock forecasts list (it's the index, not a stock)", async () => {
+    vi.mocked(fetchAllForecastSymbols).mockResolvedValue(["PSEI", "BDO"]);
+    vi.mocked(getLatestQuotes).mockResolvedValue(
+      new Map([
+        ["PSEI", quote(6300)],
+        ["BDO", quote(100)],
+      ]),
+    );
+    vi.mocked(fetchAllForecastPoints).mockResolvedValue(new Map());
+    vi.mocked(fetchAllModelMetrics).mockResolvedValue([]);
+
+    const result = await dbMarketProvider.getForecastsData();
+
+    expect(result.forecasts.map((f) => f.ticker)).toEqual(["BDO.PS"]);
+  });
+
+  it("classifies trend from the same rounded price shown on screen, not a sub-cent float difference", async () => {
+    // 0.45 -> 0.4451 is a real -1.09% move (would cross the 1% threshold on
+    // raw floats), but both round to the same displayed "₱0.45" — a user
+    // looking at the table would see no change, so this must not be
+    // labeled "Projected Downward".
+    vi.mocked(fetchAllForecastSymbols).mockResolvedValue(["ALCO"]);
+    vi.mocked(getLatestQuotes).mockResolvedValue(new Map([["ALCO", quote(0.45)]]));
+    vi.mocked(fetchAllForecastPoints).mockResolvedValue(
+      new Map([
+        [
+          "ALCO",
+          [
+            { date: "Jul 30", price: 0.45, forecast: null },
+            { date: "Aug 6", price: null, forecast: 0.4451 },
+          ],
+        ],
+      ]),
+    );
+    vi.mocked(fetchAllModelMetrics).mockResolvedValue([]);
+
+    const result = await dbMarketProvider.getForecastsData();
+
+    expect(result.forecasts[0]).toMatchObject({
+      currentPrice: "₱0.45",
+      forecast7d: "₱0.45",
+      trend: "Mixed Signal",
+    });
+  });
+
+  it("rounds the same way formatPriceAmount's toFixed(2) does, not Math.round(x*100)/100", async () => {
+    // 0.405 and 0.415 both display as "₱0.41" via toFixed(2), but
+    // Math.round(x*100)/100 rounds them to 0.41 and 0.42 respectively (a
+    // floating-point quirk at exact half-cent boundaries) — a >2% synthetic
+    // delta that would have reintroduced the display/trend mismatch this
+    // whole rounding fix exists to prevent.
+    vi.mocked(fetchAllForecastSymbols).mockResolvedValue(["VITA"]);
+    vi.mocked(getLatestQuotes).mockResolvedValue(new Map([["VITA", quote(0.405)]]));
+    vi.mocked(fetchAllForecastPoints).mockResolvedValue(
+      new Map([
+        [
+          "VITA",
+          [
+            { date: "Jul 30", price: 0.405, forecast: null },
+            { date: "Aug 6", price: null, forecast: 0.415 },
+          ],
+        ],
+      ]),
+    );
+    vi.mocked(fetchAllModelMetrics).mockResolvedValue([]);
+
+    const result = await dbMarketProvider.getForecastsData();
+
+    expect(result.forecasts[0]).toMatchObject({
+      currentPrice: "₱0.41",
+      forecast7d: "₱0.41",
+      trend: "Mixed Signal",
+    });
   });
 });
 
@@ -264,5 +331,31 @@ describe("staticMarketProvider.getForecastsData", () => {
     expect(result.summary.upwardPercent).toBe("50%");
     expect(result.summary.averageAccuracy).toBe("60%");
     expect(result.summary.lastUpdated).not.toBe(forecastSummary.lastUpdated);
+  });
+
+  it("excludes PSEI from the stock forecasts list (it's the index, not a stock)", async () => {
+    vi.mocked(getAllForecastsFromSnapshot).mockResolvedValue([
+      {
+        symbol: "PSEI",
+        model: "linear",
+        horizonDays: 7,
+        generatedAt: "2026-07-30T00:00:00.000Z",
+        points: [{ date: "Jul 30", price: 6300, forecast: null }],
+      },
+      {
+        symbol: "BDO",
+        model: "linear",
+        horizonDays: 7,
+        generatedAt: "2026-07-30T00:00:00.000Z",
+        points: [{ date: "Jul 30", price: 100, forecast: null }],
+      },
+    ]);
+    vi.mocked(getQuotesSnapshot).mockReturnValue(new Map());
+    vi.mocked(getQuotesSnapshotAsOf).mockReturnValue(null);
+    vi.mocked(getAllMetricsFromSnapshot).mockResolvedValue([]);
+
+    const result = await staticMarketProvider.getForecastsData();
+
+    expect(result.forecasts.map((f) => f.ticker)).toEqual(["BDO.PS"]);
   });
 });

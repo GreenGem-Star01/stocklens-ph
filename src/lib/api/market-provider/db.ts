@@ -19,14 +19,14 @@ import {
 import { applyMarketSession } from "@/lib/market/pse-session";
 import { getLatestQuotes, getQuotesAsOf } from "@/lib/market/quotes-repository";
 import {
+  fetchAllForecastPoints,
   fetchAllForecastSymbols,
   fetchAllModelMetrics,
-  fetchForecastPoints,
-  fetchModelMetrics,
 } from "@/lib/market/forecasts-repository";
 import { forecastTargetFromPoints } from "@/lib/forecast/generate";
+import { bestModelMetrics } from "@/lib/forecast/backtest";
 import { expectedChangePct, summarizeModelPerformance } from "@/lib/data/forecasts";
-import { isUpwardTrend, trendFromPrices } from "@/lib/forecast";
+import { isUpwardTrend, roundToDisplayPrecision, trendFromPrices } from "@/lib/forecast";
 import { symbolToTicker, tickerToSymbol } from "@/lib/market/symbol";
 import type { MarketBar } from "@/lib/market/types";
 import type { FeaturedStock, RecentAnalysisRow } from "@/lib/types/stock";
@@ -184,22 +184,39 @@ export const dbMarketProvider: MarketProvider = {
 
   async getForecastsData() {
     const horizonDays = 7;
-    const symbols = await fetchAllForecastSymbols();
-    const quotes = await getLatestQuotes();
+    const [symbols, quotes, allPoints, allMetrics] = await Promise.all([
+      fetchAllForecastSymbols(),
+      getLatestQuotes(),
+      fetchAllForecastPoints("linear", horizonDays),
+      fetchAllModelMetrics(horizonDays),
+    ]);
 
-    const forecasts = await Promise.all(
-      symbols.slice(0, 100).map(async (symbol) => {
+    const metricsBySymbol = new Map<string, typeof allMetrics>();
+    for (const m of allMetrics) {
+      const list = metricsBySymbol.get(m.symbol) ?? [];
+      list.push(m);
+      metricsBySymbol.set(m.symbol, list);
+    }
+
+    // PSEI is the index, not a stock — this list is "stock forecasts".
+    const forecasts = symbols
+      .filter((symbol) => symbol !== "PSEI")
+      .map((symbol) => {
         const ticker = symbolToTicker(symbol);
         const company = getPseCompanyByTicker(ticker);
         const quote = quotes.get(symbol);
-        const [points, metrics] = await Promise.all([
-          fetchForecastPoints(ticker, "linear", horizonDays),
-          fetchModelMetrics(ticker, horizonDays),
-        ]);
-        const best = metrics[0];
-        const target = forecastTargetFromPoints(points ?? []);
+        const points = allPoints.get(symbol) ?? [];
+        const best = bestModelMetrics(metricsBySymbol.get(symbol) ?? []);
+        const target = forecastTargetFromPoints(points);
         const lastPrice = quote?.lastClose ?? 0;
-        const trend = trendFromPrices(lastPrice, target || lastPrice);
+        // Classify trend from the same rounded values shown on screen, not
+        // raw floats — otherwise a stock whose price rounds to an unchanged
+        // display value (e.g. ₱0.45 → ₱0.45) can still get labeled
+        // "Projected Downward" from a sub-cent difference the user never sees.
+        const trend = trendFromPrices(
+          roundToDisplayPrecision(lastPrice),
+          roundToDisplayPrecision(target || lastPrice),
+        );
         const currentPrice = quote ? formatPriceAmount(quote.lastClose) : "—";
         const forecast7d = target ? formatPriceAmount(target) : "—";
 
@@ -216,10 +233,8 @@ export const dbMarketProvider: MarketProvider = {
             ? { expectedChange: expectedChangePct(currentPrice, forecast7d) }
             : {}),
         };
-      }),
-    );
+      });
 
-    const allMetrics = await fetchAllModelMetrics(horizonDays);
     const modelPerformance = summarizeModelPerformance(allMetrics);
 
     const upwardCount = forecasts.filter((f) => isUpwardTrend(f.trend)).length;

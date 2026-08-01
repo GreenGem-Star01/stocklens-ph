@@ -198,11 +198,14 @@ async function main(): Promise<void> {
   const probe = parseProbeSymbol();
   const concurrency = parseConcurrency();
 
-  // --seeds scopes to the ~30 demo/blue-chip tickers the app actually shows
-  // full analysis for (dashboard, watchlist, forecasts page, Insights tab) —
-  // meaningful for --lstm specifically, since each symbol spawns a python3
-  // subprocess (up to 120s) rather than the near-instant baseline models,
-  // so a full ~250+ symbol universe run isn't a fit for a routine CI job.
+  // --seeds scopes to the ~30 demo/blue-chip tickers used for dashboard and
+  // watchlist seed data. Baseline models (naive/ma/linear) run near-instant
+  // JS math, so routine runs process the full universe by default — the
+  // forecasts page and individual stock pages already show live data for
+  // any symbol with published forecast rows, not just this seed set.
+  // --seeds only matters for --lstm: each symbol spawns a python3
+  // subprocess (up to 120s), so a full ~250+ symbol universe run isn't a
+  // fit for a routine CI job.
   const symbols = probe
     ? [probe]
     : seedsOnly

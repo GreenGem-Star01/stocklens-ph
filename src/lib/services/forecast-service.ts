@@ -3,7 +3,7 @@ import {
   getStockAnalysisData,
 } from "@/lib/api/market-provider";
 import type { StockForecast } from "@/lib/data/forecasts";
-import type { ForecastTrend } from "@/lib/types/stock";
+import { roundToDisplayPrecision, trendFromPrices } from "@/lib/forecast";
 import type { StockAnalysis } from "@/lib/types/stock-analysis";
 
 export type ForecastQuery = {
@@ -19,18 +19,12 @@ export type ForecastResponse = {
   >["modelPerformance"];
 };
 
-function trendFromPrices(last: number, target: number): ForecastTrend {
-  const delta = (target - last) / last;
-  if (delta > 0.01) return "Projected Upward";
-  if (delta < -0.01) return "Projected Downward";
-  return "Mixed Signal";
-}
-
 export function buildForecastFromAnalysis(
   analysis: StockAnalysis,
   model = "linear",
 ): StockForecast {
   void model;
+  const isIndex = analysis.info.sector === "Index";
   const lastPoint = [...analysis.chartData]
     .reverse()
     .find((p) => p.price != null);
@@ -44,9 +38,12 @@ export function buildForecastFromAnalysis(
     sector: analysis.info.sector,
     currentPrice: analysis.metrics.lastClose,
     forecast7d: analysis.forecastTarget,
-    trend: trendFromPrices(lastPrice, targetPrice),
+    trend: trendFromPrices(
+      roundToDisplayPrecision(lastPrice, isIndex),
+      roundToDisplayPrecision(targetPrice, isIndex),
+    ),
     accuracy: analysis.performance.directionalAccuracy,
-    date: "2026-05-16",
+    date: new Date().toISOString().slice(0, 10),
     expectedChange: analysis.metrics.dailyChange,
   };
 }

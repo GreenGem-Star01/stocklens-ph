@@ -26,7 +26,7 @@ import {
 import type { MarketBar, MarketQuote } from "@/lib/market/types";
 import { applyOfficialLabelsToAnalysis } from "@/lib/pse/apply-official-labels";
 import { getPseCompanyByTicker } from "@/lib/pse/universe";
-import type { ForecastTrend } from "@/lib/types/stock";
+import { roundToDisplayPrecision, trendFromPrices } from "@/lib/forecast";
 import type {
   ChartPoint,
   ModelComparisonRow,
@@ -59,13 +59,6 @@ function chartValuesFromPoints(points: ChartPoint[]): number[] {
   return points.flatMap((p) => [p.price, p.forecast]).filter(
     (v): v is number => v != null && Number.isFinite(v),
   );
-}
-
-function trendFromPrices(last: number, target: number): ForecastTrend {
-  const delta = last ? (target - last) / last : 0;
-  if (delta > 0.01) return "Projected Upward";
-  if (delta < -0.01) return "Projected Downward";
-  return "Mixed Signal";
 }
 
 function formatTarget(price: number, isIndex: boolean): string {
@@ -185,6 +178,7 @@ async function loadMetrics(
 
   const snapMetrics = await getMetricsFromSnapshot(symbol, horizonDays);
   return snapMetrics.map((m) => ({
+    symbol: m.symbol,
     model: m.model as ForecastModel,
     horizonDays: m.horizonDays,
     mae: m.mae,
@@ -278,7 +272,10 @@ export async function buildMarketAnalysis(
     }),
     forecastStartDate: forecastStart,
     forecastTarget: formatTarget(target || lastPrice, isIndex),
-    trend: trendFromPrices(lastPrice, target || lastPrice),
+    trend: trendFromPrices(
+      roundToDisplayPrecision(lastPrice, isIndex),
+      roundToDisplayPrecision(target || lastPrice, isIndex),
+    ),
     performance,
     modelComparison,
     lastUpdated,

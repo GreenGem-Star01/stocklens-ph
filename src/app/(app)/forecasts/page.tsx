@@ -23,7 +23,8 @@ export default async function ForecastsPage() {
           >
             Looking for a ticker? Browse all stocks
           </Link>
-          . Forecasts below cover the demo blue-chip subset only.
+          . Forecasts below use the linear regression baseline across every
+          PSE-listed stock with published forecast data.
         </p>
       </div>
       <ForecastsSummary summary={summary} />

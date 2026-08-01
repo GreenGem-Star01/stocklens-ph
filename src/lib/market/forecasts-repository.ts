@@ -26,6 +26,7 @@ type MetricsRow = {
 };
 
 export type StoredModelMetrics = {
+  symbol: string;
   model: ForecastModel;
   horizonDays: number;
   mae: number;
@@ -73,6 +74,7 @@ export async function getForecastPoints(
 
 function mapMetricsRow(row: MetricsRow): StoredModelMetrics {
   return {
+    symbol: row.symbol,
     model: row.model as ForecastModel,
     horizonDays: row.horizon_days,
     mae: Number(row.mae),
@@ -130,6 +132,29 @@ export async function getModelMetrics(
     ["market-metrics", symbol, String(horizonDays)],
     { revalidate: 300, tags: [`market-metrics:${symbol}`] },
   )();
+}
+
+/** Latest forecast points for every symbol at once, keyed by symbol — avoids
+ * an N-query fan-out (one fetchForecastPoints call per symbol) when building
+ * a universe-wide view like the forecasts overview page. */
+export async function fetchAllForecastPoints(
+  model: ForecastModel,
+  horizonDays: number,
+): Promise<Map<string, ChartPoint[]>> {
+  const map = new Map<string, ChartPoint[]>();
+  if (!isDbMarketEnabled()) return map;
+
+  const rows = await query<{ symbol: string; points: ChartPoint[] }>(
+    `SELECT symbol, points
+     FROM market_forecasts_latest
+     WHERE model = $1 AND horizon_days = $2`,
+    [model, horizonDays],
+  );
+
+  for (const row of rows) {
+    if (Array.isArray(row.points)) map.set(row.symbol, row.points);
+  }
+  return map;
 }
 
 export async function fetchAllForecastSymbols(): Promise<string[]> {

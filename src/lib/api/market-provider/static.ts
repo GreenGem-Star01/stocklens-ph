@@ -20,7 +20,7 @@ import {
 import { getPseCompanyByTicker } from "@/lib/pse/universe";
 import { TICKER_BY_SYMBOL } from "@/lib/constants/tickers";
 import type { MarketProvider } from "@/lib/api/market-provider/types";
-import { isUpwardTrend, trendFromPrices } from "@/lib/forecast";
+import { isUpwardTrend, roundToDisplayPrecision, trendFromPrices } from "@/lib/forecast";
 import {
   formatAsOf,
   formatChangePct,
@@ -206,7 +206,8 @@ export const staticMarketProvider: MarketProvider = {
     }
 
     const forecasts = snapRows
-      .filter((r) => r.horizonDays === horizonDays && r.model === "linear")
+      // PSEI is the index, not a stock — this list is "stock forecasts".
+      .filter((r) => r.horizonDays === horizonDays && r.model === "linear" && r.symbol !== "PSEI")
       .map((row) => {
         const ticker = symbolToTicker(row.symbol);
         const company = getPseCompanyByTicker(ticker);
@@ -214,7 +215,13 @@ export const staticMarketProvider: MarketProvider = {
         const lastForecast = [...row.points].reverse().find((p) => p.forecast != null);
         const target = lastForecast?.forecast ?? null;
         const lastPrice = quote?.lastClose ?? 0;
-        const trend = trendFromPrices(lastPrice, target ?? lastPrice);
+        // Classify trend from the same rounded values shown on screen, not
+        // raw floats — otherwise a price that rounds to an unchanged display
+        // value can still get labeled a projected move the user never sees.
+        const trend = trendFromPrices(
+          roundToDisplayPrecision(lastPrice),
+          roundToDisplayPrecision(target ?? lastPrice),
+        );
         const currentPrice = quote ? String(quote.lastClose) : "—";
         const forecast7d = target != null ? String(target) : "—";
         const symbolMetrics = metricsBySymbol.get(row.symbol) ?? [];
