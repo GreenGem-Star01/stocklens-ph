@@ -29,6 +29,7 @@
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@prisma/client": "^7.9.1",
+    "@sentry/nextjs": "^10.69.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

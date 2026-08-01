@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // script-src/style-src need 'unsafe-inline': ThemeInitScript renders an
 // inline <script> to avoid a flash of the wrong theme before hydration,
@@ -21,7 +22,11 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://vercel.live wss://*.pusher.com https://*.pusher.com",
+  // Sentry ingest — covers all three data regions since the account's
+  // region isn't known at config time. *.sentry.io also lets Sentry's
+  // "loader script" variant work if that's ever adopted instead of the
+  // current @sentry/nextjs SDK.
+  "connect-src 'self' https://vercel.live wss://*.pusher.com https://*.pusher.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
   "frame-src https://vercel.live",
   "object-src 'none'",
   "base-uri 'self'",
@@ -48,4 +53,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Not using Sentry's tunnelRoute (proxies event delivery same-origin,
+// which would let the CSP above stay untouched): it's implemented as a
+// webpack rewrite, and this project builds with Turbopack — confirmed by
+// curling the tunnel path in a real build and getting a plain 404 rather
+// than Sentry's collector. connect-src is widened instead, since that
+// works regardless of bundler.
+// org/project/authToken only matter for source-map upload at build time;
+// left undefined (no SENTRY_AUTH_TOKEN configured) this step is skipped,
+// not a hard failure — see docs/OBSERVABILITY.md.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+});

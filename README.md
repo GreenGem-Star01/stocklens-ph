@@ -186,3 +186,7 @@ Requires network access to `edge.pse.com.ph`. Commit updated `data/pse-official-
 - **DSS:** `MARKET_DATA_SOURCE=db`, readonly `DATABASE_URL`, cron with writer creds in `.env.ingest`.
 
 Rotate Supabase passwords if credentials were ever exposed. Never commit `.env` or `.env.ingest`.
+
+## Error monitoring
+
+Sentry (`@sentry/nextjs`) is wired in but inert until a DSN is configured — see [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md).
