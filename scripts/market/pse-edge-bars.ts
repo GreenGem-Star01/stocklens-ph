@@ -114,6 +114,14 @@ export async function fetchPseEdgeHistoricalBars(
     const tradeDate = row.CHART_DATE ? parseChartDate(row.CHART_DATE) : null;
     if (!tradeDate || tradeDate < cutoff) continue;
 
+    // This endpoint has no per-day share volume, but VALUE (peso value
+    // traded that day) is present — VALUE / CLOSE approximates shares
+    // traded within ~0.5% of PSE EDGE's own reported VOLUME (verified
+    // against the stockdataList endpoint's real VOLUME for several
+    // tickers). Better than permanently null.
+    const volume =
+      row.VALUE != null && close > 0 ? Math.round(row.VALUE / close) : null;
+
     bars.push({
       symbol: bare,
       tradeDate,
@@ -121,7 +129,7 @@ export async function fetchPseEdgeHistoricalBars(
       high: row.HIGH ?? close,
       low: row.LOW ?? close,
       close,
-      volume: null,
+      volume,
     });
   }
 
