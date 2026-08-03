@@ -135,7 +135,7 @@ Vercel env: `MARKET_DATA_SOURCE=static` (no `DATABASE_URL`).
 
 Optional: enable [`.github/workflows/market-snapshot.yml`](../.github/workflows/market-snapshot.yml) for scheduled snapshot refresh on GitHub Actions.
 
-**Failure alerting:** all three scheduled ingest workflows (`market-snapshot.yml`, `market-forecasts-snapshot.yml`, `market-forecasts-lstm.yml`) file/reuse a GitHub issue labeled `ingest-failure` when the run fails — see [`.github/ingest-failure-issue.md`](../.github/ingest-failure-issue.md). This does not cover `cron.example.sh` (DSS VM) — that script has no alerting wired up yet.
+**Failure alerting:** all four scheduled ingest workflows (`market-snapshot.yml`, `market-live-refresh.yml`, `market-forecasts-snapshot.yml`, `market-forecasts-lstm.yml`) file/reuse a GitHub issue labeled `ingest-failure` when the run fails — see [`.github/ingest-failure-issue.md`](../.github/ingest-failure-issue.md). This does not cover `cron.example.sh` (DSS VM) — that script has no alerting wired up yet.
 
 **Forecasts snapshot (Vercel):** publishes directly to Supabase Storage — no git commit. Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (ingest-only, never in the app's runtime env).
 
@@ -147,9 +147,22 @@ npm run ingest:forecasts:snapshot
 
 ### DSS production (`MARKET_DATA_SOURCE=db`)
 
-1. Cron: quotes → bars → forecasts → `health:market` (see [`cron.example.sh`](cron.example.sh)).
-2. App uses **read-only** `DATABASE_URL`; cron uses **writer** in `.env.ingest`.
-3. Full VM setup: [`DSS-OPS.md`](DSS-OPS.md).
+1. Quotes and bars are refreshed automatically on GitHub Actions —
+   [`.github/workflows/market-live-refresh.yml`](../.github/workflows/market-live-refresh.yml),
+   weekdays ~10:00 UTC (18:00 Manila), writing directly to the live
+   `market_quotes_latest`/`market_bars_daily` tables via a `DATABASE_URL`
+   repo secret. Forecasts refresh ~90 min later via
+   `market-forecasts-snapshot.yml`, so they're built from same-day bars.
+2. `cron.example.sh` (DSS VM) runs the same quotes → bars → forecasts →
+   `health:market` sequence and is documented as the intended production
+   path, but its actual deployment status has never been confirmed — as of
+   Aug 2026, quotes had silently gone stale for a week with nothing
+   catching it before `market-live-refresh.yml` was added. Treat the VM
+   cron as a nice-to-have alongside GitHub Actions, not the only thing
+   keeping this fresh.
+3. App uses **read-only** `DATABASE_URL`; cron/Actions use a **writer**
+   role (`.env.ingest` for the VM; a repo secret for Actions).
+4. Full VM setup: [`DSS-OPS.md`](DSS-OPS.md).
 
 ---
 

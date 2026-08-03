@@ -1,0 +1,65 @@
+# Refreshes the live Postgres market_quotes_latest and market_bars_daily
+# tables that MARKET_DATA_SOURCE=db actually reads from. Unlike
+# market-snapshot.yml (which only writes the static/Vercel JSON snapshot —
+# no DB write at all), this writes directly to the production database.
+#
+# This was supposed to be handled by the DSS VM's cron (cron.example.sh),
+# but that deployment was never confirmed running, and in practice quotes
+# had gone stale for a week with nothing catching it. This replaces that
+# reliance with something verifiably running on GitHub Actions, alongside
+# the other three scheduled ingest workflows.
+#
+# Scheduled ~90 minutes before market-forecasts-snapshot.yml so that when
+# forecasts are computed, they're built from same-day bars instead of
+# whatever was last in Postgres.
+
+name: Market live data refresh
+
+on:
+  schedule:
+    - cron: "0 10 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Check DATABASE_URL is configured
+        id: has-secrets
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::DATABASE_URL not set — skipping live data refresh"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - run: npm run ingest:quotes
+        if: steps.has-secrets.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm run ingest:bars
+        if: steps.has-secrets.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm run health:market
+        if: steps.has-secrets.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: File issue on failure
+        if: failure()
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          filename: .github/ingest-failure-issue.md
+          search_existing: open
+          update_existing: true
