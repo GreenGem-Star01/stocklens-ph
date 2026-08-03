@@ -136,10 +136,10 @@ export function SettingsForm() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="lstm">LSTM (Recommended)</SelectItem>
-                <SelectItem value="linear">Linear Regression</SelectItem>
-                <SelectItem value="ma">Moving Average</SelectItem>
                 <SelectItem value="naive">Naive Baseline</SelectItem>
+                <SelectItem value="ma">Moving Average</SelectItem>
+                <SelectItem value="linear">Linear Regression</SelectItem>
+                <SelectItem value="lstm">LSTM</SelectItem>
               </SelectContent>
             </Select>
           </div>

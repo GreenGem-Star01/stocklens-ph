@@ -24,7 +24,9 @@ export type SettingsState = {
 
 const defaults: Omit<SettingsState, "setField" | "reset" | "setAll"> = {
   defaultHorizon: "7d",
-  preferredModel: "lstm",
+  // Naive Baseline, not LSTM — see forecastModelSchema in
+  // lib/validation/ticker.ts for why.
+  preferredModel: "naive",
   showModelComparison: true,
   displayAiInsights: true,
   defaultTimeRange: "30d",
