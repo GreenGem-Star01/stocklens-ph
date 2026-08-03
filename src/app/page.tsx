@@ -1,12 +1,13 @@
 import Link from "next/link";
 import {
   BarChart3,
-  Brain,
+  Layers,
   Lightbulb,
   TrendingUp,
 } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { PseiChart } from "@/components/dashboard/psei-chart-lazy";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,39 +18,50 @@ import {
 } from "@/components/ui/card";
 import { GITHUB_REPO_URL } from "@/lib/constants/site";
 import { FORECAST_DISCLAIMER } from "@/lib/forecast";
+import { getListedEquityCount } from "@/lib/pse/universe";
+import { getMarketOverview } from "@/lib/services/market-service";
 
-const features = [
-  {
-    icon: TrendingUp,
-    title: "Philippine Stock Data",
-    description:
-      "Access comprehensive historical data for Philippine Stock Exchange (PSE) listed companies.",
-  },
-  {
-    icon: Brain,
-    title: "LSTM Forecasting",
-    description:
-      "Advanced deep learning models predict 7-day price movements with confidence metrics.",
-  },
-  {
-    icon: BarChart3,
-    title: "Baseline Comparison",
-    description:
-      "Compare LSTM against naive, moving average, and linear regression baselines.",
-  },
-  {
-    icon: Lightbulb,
-    title: "AI Market Insight",
-    description:
-      "Get plain-language explanations of forecast trends and market patterns.",
-  },
-] as const;
+export const revalidate = 300;
+
+function buildFeatures(stockCount: number) {
+  return [
+    {
+      icon: TrendingUp,
+      title: "Full PSE Coverage",
+      description: `Historical data and forecasts for all ${stockCount} PSE-listed companies — not a curated subset.`,
+    },
+    {
+      icon: BarChart3,
+      title: "Model Performance, Transparently",
+      description:
+        "Every forecast ships with its own backtested MAE, RMSE, and directional accuracy — see what actually works, not just a prediction.",
+    },
+    {
+      icon: Layers,
+      title: "Multi-Model Forecasting",
+      description:
+        "Naive, Moving Average, Linear Regression, and LSTM — compare 7-day forecasts across all four side by side.",
+    },
+    {
+      icon: Lightbulb,
+      title: "AI Market Insight",
+      description:
+        "Plain-language explanations of forecast trends and market patterns, computed from live data.",
+    },
+  ] as const;
+}
 
 const pageContainer = "container mx-auto w-full max-w-7xl px-4 md:px-8";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const [stockCount, market] = await Promise.all([
+    getListedEquityCount(),
+    getMarketOverview(),
+  ]);
+  const features = buildFeatures(stockCount);
+
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-background to-muted/20">
+    <div className="min-h-screen w-full bg-gradient-to-b from-background to-muted/40">
       <header className="w-full border-b border-brand-accent/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className={`${pageContainer} flex h-16 items-center`}>
           <BrandLogo className="text-xl" markSize={32} />
@@ -62,7 +74,7 @@ export default function LandingPage() {
       </header>
 
       <main className="w-full">
-        <section className={`${pageContainer} py-20 md:py-32`}>
+        <section className={`${pageContainer} py-20 md:py-28`}>
           <div className="mx-auto max-w-3xl space-y-6 text-center">
             <h1 className="font-sans text-4xl font-bold tracking-tight md:text-6xl">
               StockLens{" "}
@@ -73,7 +85,7 @@ export default function LandingPage() {
               model comparison.
             </p>
             <p className="text-sm font-medium text-muted-foreground">
-              Full PSE equity directory · demo forecasts on select blue chips
+              {stockCount} PSE-listed stocks tracked · forecasts updated daily
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
               <Link href="/dashboard">
@@ -86,12 +98,13 @@ export default function LandingPage() {
                   View sample analysis
                 </Button>
               </Link>
-              <Link href="/watchlist">
-                <Button size="lg" variant="ghost" className="px-6 py-6 text-lg">
-                  Watchlist
-                </Button>
-              </Link>
             </div>
+          </div>
+        </section>
+
+        <section className={`${pageContainer} pb-16`}>
+          <div className="mx-auto max-w-3xl">
+            <PseiChart data={market.pseiChart} />
           </div>
         </section>
 
@@ -158,6 +171,9 @@ export default function LandingPage() {
           <nav className="flex flex-wrap justify-center gap-4 sm:justify-end">
             <Link href="/dashboard" className="hover:text-foreground">
               Dashboard
+            </Link>
+            <Link href="/watchlist" className="hover:text-foreground">
+              Watchlist
             </Link>
             <Link href="/terms" className="hover:text-foreground">
               Terms
